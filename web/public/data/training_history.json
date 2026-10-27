@@ -1,0 +1,134 @@
+{
+ "run_id": "20261027-195711-phantom",
+ "git": "5c28126",
+ "device": "cpu",
+ "torch": "2.14.1+cpu",
+ "model_config": {
+  "in_channels": 4,
+  "input_shape": [
+   64,
+   64,
+   32
+  ],
+  "encoder_channels": [
+   32,
+   64,
+   128,
+   256
+  ],
+  "mpo_in_factors": [
+   16,
+   16
+  ],
+  "mpo_out_factors": [
+   16,
+   16
+  ],
+  "mpo_bond": 32,
+  "node_grid": [
+   8,
+   8,
+   4
+  ],
+  "hyperedges": 5,
+  "hypergraph_layers": 3,
+  "incidence_hidden": 128,
+  "token_grids": [
+   [
+    8,
+    8,
+    4
+   ],
+   [
+    4,
+    4,
+    2
+   ],
+   [
+    2,
+    2,
+    1
+   ],
+   [
+    1,
+    1,
+    1
+   ]
+  ],
+  "attention_heads": 8,
+  "shared_dim": 512,
+  "num_covariates": 5,
+  "num_classes": 6,
+  "prognosis_hidden": [
+   256,
+   128
+  ],
+  "prognosis_outputs": 5,
+  "use_mpo": true,
+  "use_hypergraph": true,
+  "use_msca": true
+ },
+ "train_config": {
+  "epochs": 3,
+  "batch_size": 2,
+  "grad_accumulation": 1,
+  "peak_lr": 0.0003,
+  "warmup_epochs": 1,
+  "weight_decay": 1e-05,
+  "grad_clip": 1.0,
+  "amp": false,
+  "seed": 2026,
+  "horizons_years": [
+   1.0,
+   3.0,
+   5.0
+  ],
+  "min_events_per_batch": 2,
+  "num_workers": 0,
+  "cache_dir": "data/cache",
+  "run_dir": "runs",
+  "dataset": "phantom",
+  "phantom_cases": 8,
+  "max_steps_per_epoch": 0,
+  "extra": {}
+ },
+ "unsupervised_channels": [
+  "kidney",
+  "cervix",
+  "spleen"
+ ],
+ "train_cases": 8,
+ "val_cases": 2,
+ "history": [
+  {
+   "epoch": 0,
+   "train_total": 0.9366105645895004,
+   "train_marginal": 0.7553402781486511,
+   "train_cox": 0.0,
+   "val_marginal": 0.6059149503707886,
+   "lr": 0.0003,
+   "skipped": 0,
+   "seconds": 23.4
+  },
+  {
+   "epoch": 1,
+   "train_total": 0.5738457590341568,
+   "train_marginal": 0.5754819810390472,
+   "train_cox": null,
+   "val_marginal": 0.5321736335754395,
+   "lr": 0.00015,
+   "skipped": 0,
+   "seconds": 23.4
+  },
+  {
+   "epoch": 2,
+   "train_total": 0.4905926585197449,
+   "train_marginal": 0.49348972737789154,
+   "train_cox": null,
+   "val_marginal": 0.5156964659690857,
+   "lr": 0.0,
+   "skipped": 0,
+   "seconds": 23.8
+  }
+ ]
+}

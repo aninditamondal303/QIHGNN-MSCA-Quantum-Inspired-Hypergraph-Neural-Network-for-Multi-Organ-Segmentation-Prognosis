@@ -244,7 +244,7 @@ function RecordedRun({ verification, api }: { verification: Verification | null;
         setMsg('Re-ran on the server just now.');
       }
     } catch {
-      setMsg('The API is not running. Start it with: uvicorn api.app:app --port 8000');
+      setMsg('The API is not running. Start it with: uvicorn api.app:app --port 8765');
     } finally {
       setBusy(false);
     }

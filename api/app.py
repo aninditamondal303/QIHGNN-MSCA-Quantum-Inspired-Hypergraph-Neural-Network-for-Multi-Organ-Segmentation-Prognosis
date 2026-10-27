@@ -4,7 +4,7 @@ Built directly on Starlette (the ASGI toolkit FastAPI is built on) with pydantic
 models for request validation and response schemas. One process serves both the
 JSON API under /api and the built website at /.
 
-  uvicorn api.app:app --reload --port 8000        (from the repository root)
+  uvicorn api.app:app --reload --port 8765        (from the repository root)
 """
 from __future__ import annotations
 

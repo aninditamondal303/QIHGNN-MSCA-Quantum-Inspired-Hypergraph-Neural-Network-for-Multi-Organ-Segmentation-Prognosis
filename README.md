@@ -73,9 +73,9 @@ py -3 -m venv .venv
 .venv\Scripts\python -m pip install -r ml\requirements-dev.txt
 cd web; npm install; npm run build; cd ..
 
-# terminal 1: API on :8000 (also serves the built site at http://localhost:8000)
-.venv\Scripts\python -m uvicorn api.app:app --port 8000
-# terminal 2: website with live reload on :5173 (proxies /api to :8000)
+# terminal 1: API on :8765 (also serves the built site at http://localhost:8765)
+.venv\Scripts\python -m uvicorn api.app:app --port 8765
+# terminal 2: website with live reload on :5173 (proxies /api to :8765)
 cd web; npm run dev
 ```
 

@@ -6,6 +6,7 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
+Start-Transcript -Path (Join-Path $root "checks.log") -Force | Out-Null
 $py = Join-Path $root ".venv\Scripts\python.exe"
 if (-not (Test-Path $py)) { throw "Run scripts\setup_windows.ps1 first." }
 
@@ -44,5 +45,5 @@ npm run test:e2e; Check "e2e"
 Pop-Location
 
 Write-Host "`nAll checks passed." -ForegroundColor Green
-Write-Host "Start the site:  .venv\Scripts\python -m uvicorn api.app:app --port 8000   then open http://localhost:8000"
+Write-Host "Start the site:  .venv\Scripts\python -m uvicorn api.app:app --port 8765   then open http://localhost:8765"
 Write-Host "With the smoke checkpoint present, 'Run network on this case' in the Workbench now works."

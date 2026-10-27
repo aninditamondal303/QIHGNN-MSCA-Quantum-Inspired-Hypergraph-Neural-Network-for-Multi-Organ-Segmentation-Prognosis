@@ -6,7 +6,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
-      "args": ["api.app:app", "--port", "8000"],
+      "args": ["api.app:app", "--port", "8765"],
       "cwd": "${workspaceFolder}",
       "justMyCode": true
     },

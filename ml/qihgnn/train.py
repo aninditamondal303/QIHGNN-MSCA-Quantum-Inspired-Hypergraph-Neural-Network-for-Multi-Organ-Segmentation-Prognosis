@@ -167,7 +167,7 @@ def main() -> None:
                 opt.zero_grad(set_to_none=True)
                 sched.step()
             for k, v in terms.items():
-                sums[k] = sums.get(k, 0.0) + float(v)
+                sums[k] = sums.get(k, 0.0) + float(v.detach())
                 counts[k] = counts.get(k, 0) + 1
         avg = {k: sums[k] / counts[k] for k in sums}
         val = evaluate_loss(model, val_dl, device)

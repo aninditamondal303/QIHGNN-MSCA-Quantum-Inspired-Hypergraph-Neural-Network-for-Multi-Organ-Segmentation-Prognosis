@@ -244,14 +244,21 @@ def web_fixtures() -> Dict[str, Any]:
 
 
 def to_json(obj: Any, **kw) -> str:
-    def default(o):
-        if isinstance(o, np.generic):
-            return o.item()
+    def clean(o):
+        # Plain JSON has no NaN/Infinity: undefined metrics are written as null.
+        if isinstance(o, dict):
+            return {k: clean(v) for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [clean(v) for v in o]
         if isinstance(o, np.ndarray):
-            return o.tolist()
-        raise TypeError(type(o).__name__)
+            return clean(o.tolist())
+        if isinstance(o, np.generic):
+            o = o.item()
+        if isinstance(o, float) and (o != o or o in (float("inf"), float("-inf"))):
+            return None
+        return o
 
-    return json.dumps(obj, default=default, **kw)
+    return json.dumps(clean(obj), allow_nan=False, **kw)
 
 
 def main() -> None:

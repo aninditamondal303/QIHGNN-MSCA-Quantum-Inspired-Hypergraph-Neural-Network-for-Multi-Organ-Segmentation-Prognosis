@@ -105,7 +105,7 @@ export function Workbench({ cases, api }: { cases: CasesFile | null; api: ApiSta
     try {
       const res = await fetch('api/predict', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ case_id: info.id }) });
       if (!res.ok) {
-        setMessage(res.status === 502 || (res.status === 404 && !api.online) ? 'The API is not running. Start it from the repository root with: uvicorn api.app:app --port 8000' : await apiError(res));
+        setMessage(res.status === 502 || (res.status === 404 && !api.online) ? 'The API is not running. Start it from the repository root with: uvicorn api.app:app --port 8765' : await apiError(res));
         return;
       }
       const body = (await res.json()) as PredictResponse;

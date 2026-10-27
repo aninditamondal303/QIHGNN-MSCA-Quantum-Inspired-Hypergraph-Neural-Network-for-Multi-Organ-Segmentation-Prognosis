@@ -19,7 +19,7 @@ e2e:
 	cd web && npm run build && npm run test:e2e
 
 api:
-	$(PY) -m uvicorn api.app:app --reload --port 8000
+	$(PY) -m uvicorn api.app:app --reload --port 8765
 
 web:
 	cd web && npm run dev

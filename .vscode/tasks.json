@@ -59,12 +59,15 @@
       "options": {
         "cwd": "${workspaceFolder}/ml"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe -m qihgnn.verify; ${workspaceFolder}\\.venv\\Scripts\\python.exe -m qihgnn.export_web"
+      }
     },
     {
-      "label": "Start API (port 8000)",
+      "label": "Start API (port 8765)",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m uvicorn api.app:app --reload --port 8000",
+      "command": "${command:python.interpreterPath} -m uvicorn api.app:app --reload --port 8765",
       "isBackground": true,
       "problemMatcher": {
         "pattern": {
@@ -75,6 +78,9 @@
           "beginsPattern": "Will watch|Started reloader",
           "endsPattern": "Application startup complete|Uvicorn running"
         }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe -m uvicorn api.app:app --reload --port 8765"
       }
     },
     {
@@ -99,7 +105,7 @@
     {
       "label": "Start everything",
       "dependsOn": [
-        "Start API (port 8000)",
+        "Start API (port 8765)",
         "Start website (port 5173)"
       ],
       "dependsOrder": "parallel",
@@ -110,7 +116,10 @@
       "type": "shell",
       "command": "${command:python.interpreterPath} -m pytest",
       "group": "test",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe -m pytest"
+      }
     },
     {
       "label": "Test: web (unit + typecheck)",
@@ -141,6 +150,21 @@
       "options": {
         "cwd": "${workspaceFolder}/ml"
       },
+      "problemMatcher": [],
+      "windows": {
+        "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe -m qihgnn.train --config configs/smoke.json"
+      }
+    },
+    {
+      "label": "Git: commit all changes",
+      "type": "shell",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Fix NaN in JSON output, detach logged losses, move API to port 8765, pin Windows tasks to .venv'; git log --oneline -3; git status --short",
+      "problemMatcher": []
+    },
+    {
+      "label": "Git: push to GitHub (aninditamondal303/qihgnn-msca)",
+      "type": "shell",
+      "command": "if (-not (git remote)) { git remote add origin https://github.com/aninditamondal303/qihgnn-msca.git }; git branch -M main; git push -u origin main",
       "problemMatcher": []
     }
   ]

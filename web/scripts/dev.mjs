@@ -1,6 +1,6 @@
 // Development server on http://localhost:5173
 // - rebuilds JS (esbuild) and CSS (Tailwind) on every change in src/ and reloads the page
-// - proxies /api/* to the Python API on http://127.0.0.1:8000 (start it with `uvicorn api.app:app --port 8000`)
+// - proxies /api/* to the Python API on http://127.0.0.1:8765 (start it with `uvicorn api.app:app --port 8765`)
 import { context } from 'esbuild';
 import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { watch } from 'node:fs';
@@ -12,7 +12,7 @@ import { buildCss, esbuildOptions, writeHtml } from './build.mjs';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
 const PORT = Number(process.env.PORT || 5173);
-const API = process.env.API_URL || 'http://127.0.0.1:8000';
+const API = process.env.API_URL || 'http://127.0.0.1:8765';
 const noWatch = process.argv.includes('--no-watch');
 
 const TYPES = {
@@ -76,7 +76,7 @@ async function start() {
       });
       proxy.on('error', () => {
         res.writeHead(502, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ detail: 'The API is not running.', how_to_fix: 'From the repository root run: uvicorn api.app:app --port 8000' }));
+        res.end(JSON.stringify({ detail: 'The API is not running.', how_to_fix: 'From the repository root run: uvicorn api.app:app --port 8765' }));
       });
       req.pipe(proxy);
       return;
