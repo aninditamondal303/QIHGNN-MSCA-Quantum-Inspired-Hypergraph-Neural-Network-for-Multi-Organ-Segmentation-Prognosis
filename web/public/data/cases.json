@@ -1,0 +1,167 @@
+{
+ "labels": [
+  "background",
+  "brain",
+  "liver",
+  "kidney",
+  "cervix",
+  "spleen"
+ ],
+ "labelDescriptions": {
+  "background": "Everything that is not one of the five organ channels.",
+  "brain": "BraTS whole-tumour region (labels 1, 2 and 4 merged).",
+  "liver": "Parenchyma including lesions (LiTS labels 1 and 2 merged).",
+  "kidney": "Supervised only when KiTS19 is registered.",
+  "cervix": "Supervised only by a volumetric dataset with cervix masks.",
+  "spleen": "No registered dataset supervises it."
+ },
+ "cases": [
+  {
+   "id": "PH-BRAIN-01",
+   "title": "Synthetic brain MRI with enhancing lesion",
+   "modality": "MRI",
+   "analogOf": "BraTS 2020",
+   "synthetic": true,
+   "shape": [
+    128,
+    128,
+    64
+   ],
+   "mosaicColumns": 8,
+   "channels": [
+    {
+     "name": "T1",
+     "file": "PH-BRAIN-01/ch0.png"
+    },
+    {
+     "name": "T1ce",
+     "file": "PH-BRAIN-01/ch1.png"
+    },
+    {
+     "name": "T2",
+     "file": "PH-BRAIN-01/ch2.png"
+    },
+    {
+     "name": "FLAIR",
+     "file": "PH-BRAIN-01/ch3.png"
+    }
+   ],
+   "label": "PH-BRAIN-01/label.png",
+   "spacing": [
+    1,
+    1,
+    2.0
+   ],
+   "supervised": [
+    "background",
+    "brain"
+   ],
+   "present": [
+    "brain"
+   ],
+   "voxels": {
+    "brain": 21813
+   },
+   "note": "Lesion, oedema and necrotic core are warped ellipsoids inside folded cortex. Only the brain channel is supervised, as in BraTS."
+  },
+  {
+   "id": "PH-ABDOMEN-01",
+   "title": "Synthetic abdominal CT, liver with one lesion",
+   "modality": "CT",
+   "analogOf": "LiTS",
+   "synthetic": true,
+   "shape": [
+    128,
+    128,
+    64
+   ],
+   "mosaicColumns": 8,
+   "channels": [
+    {
+     "name": "Abdomen window",
+     "file": "PH-ABDOMEN-01/ch0.png"
+    },
+    {
+     "name": "Liver window",
+     "file": "PH-ABDOMEN-01/ch1.png"
+    },
+    {
+     "name": "Bone window",
+     "file": "PH-ABDOMEN-01/ch2.png"
+    },
+    {
+     "name": "Wide window",
+     "file": "PH-ABDOMEN-01/ch3.png"
+    }
+   ],
+   "label": "PH-ABDOMEN-01/label.png",
+   "spacing": [
+    1,
+    1,
+    2.0
+   ],
+   "supervised": [
+    "background",
+    "liver"
+   ],
+   "present": [
+    "liver",
+    "kidney",
+    "spleen"
+   ],
+   "voxels": {
+    "liver": 58015,
+    "kidney": 5267,
+    "spleen": 5644
+   },
+   "note": "Kidneys and spleen are present in the anatomy but this corpus annotates only the liver, so their channels are unsupervised for this case."
+  },
+  {
+   "id": "PH-PELVIS-01",
+   "title": "Synthetic pelvic CT with visible cervix",
+   "modality": "CT",
+   "analogOf": "no corpus supervises the cervix",
+   "synthetic": true,
+   "shape": [
+    128,
+    128,
+    64
+   ],
+   "mosaicColumns": 8,
+   "channels": [
+    {
+     "name": "Abdomen window",
+     "file": "PH-PELVIS-01/ch0.png"
+    },
+    {
+     "name": "Liver window",
+     "file": "PH-PELVIS-01/ch1.png"
+    },
+    {
+     "name": "Bone window",
+     "file": "PH-PELVIS-01/ch2.png"
+    },
+    {
+     "name": "Wide window",
+     "file": "PH-PELVIS-01/ch3.png"
+    }
+   ],
+   "label": "PH-PELVIS-01/label.png",
+   "spacing": [
+    1,
+    1,
+    2.0
+   ],
+   "supervised": [
+    "background"
+   ],
+   "present": [
+    "cervix"
+   ],
+   "voxels": {
+    "cervix": 1667
+   },
+   "note": "The cervix is drawn in the anatomy, but no registered corpus supervises the cervix channel, so the server suppresses it."
+  }
+ ]
+}

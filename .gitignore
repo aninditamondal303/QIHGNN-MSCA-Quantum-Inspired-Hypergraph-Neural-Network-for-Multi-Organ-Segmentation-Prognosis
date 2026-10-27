@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data and training outputs (large; regenerate with the scripts)
+data/raw/
+data/cache/
+data/inspection_report.json
+runs/
+*.pt
+
+# Web
+web/node_modules/
+web/dist/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.log

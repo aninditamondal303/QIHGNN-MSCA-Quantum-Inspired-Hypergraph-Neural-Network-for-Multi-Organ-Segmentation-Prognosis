@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QIHGNN-MSCA Research Archive</title>
+    <meta name="description" content="One network for multi-organ segmentation and prognosis, trained on datasets that each label a single organ. Architecture, live verification and an interactive scan workbench." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="fonts/Syne-var.woff" as="font" type="font/woff" crossorigin />
+    <link rel="preload" href="fonts/PlusJakartaSans-var.woff" as="font" type="font/woff" crossorigin />
+    <script>
+      // Apply the saved or system theme before first paint to avoid a flash.
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem('qihgnn-theme'); } catch (e) {}
+        if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
+    <link rel="stylesheet" href="%KATEX%" />
+    <link rel="stylesheet" href="%CSS%" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>This archive needs JavaScript for the scan viewer and the verification instruments.</noscript>
+    <script type="module" src="%JS%"></script>
+    %RELOAD%
+  </body>
+</html>

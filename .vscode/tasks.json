@@ -1,0 +1,80 @@
+{
+  "version": "2.0.0",
+  "windows": { "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } } },
+  "tasks": [
+    {
+      "label": "1. Setup: Python environment",
+      "type": "shell",
+      "command": "python3 -m venv .venv && .venv/bin/python -m pip install -r ml/requirements-dev.txt",
+      "windows": { "command": "py -3 -m venv .venv; .venv\\Scripts\\python -m pip install --upgrade pip; .venv\\Scripts\\python -m pip install torch --index-url https://download.pytorch.org/whl/cpu; .venv\\Scripts\\python -m pip install -r ml/requirements-dev.txt" },
+      "linux": { "command": "python3 -m venv .venv && .venv/bin/python -m pip install --upgrade pip && .venv/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cpu && .venv/bin/python -m pip install -r ml/requirements-dev.txt" },
+      "osx": { "command": "python3 -m venv .venv && .venv/bin/python -m pip install --upgrade pip && .venv/bin/python -m pip install torch && .venv/bin/python -m pip install -r ml/requirements-dev.txt" },
+      "problemMatcher": []
+    },
+    {
+      "label": "2. Setup: web dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Verify maths and export site data",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m qihgnn.verify; ${command:python.interpreterPath} -m qihgnn.export_web",
+      "options": { "cwd": "${workspaceFolder}/ml" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start API (port 8000)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m uvicorn api.app:app --reload --port 8000",
+      "isBackground": true,
+      "problemMatcher": { "pattern": { "regexp": "^x" }, "background": { "activesBegin": ".", "beginsPattern": "Will watch|Started reloader", "endsPattern": "Application startup complete|Uvicorn running" } }
+    },
+    {
+      "label": "Start website (port 5173)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "isBackground": true,
+      "problemMatcher": { "pattern": { "regexp": "^x" }, "background": { "activesBegin": ".", "beginsPattern": ".", "endsPattern": "QIHGNN-MSCA web" } }
+    },
+    {
+      "label": "Start everything",
+      "dependsOn": ["Start API (port 8000)", "Start website (port 5173)"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Python",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m pytest",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: web (unit + typecheck)",
+      "type": "shell",
+      "command": "npm test; npm run typecheck",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "group": "test",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Test: browser end to end",
+      "type": "shell",
+      "command": "npm run build; npx playwright install chromium; npm run test:e2e",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Train: smoke run (CPU, minutes)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m qihgnn.train --config configs/smoke.json",
+      "options": { "cwd": "${workspaceFolder}/ml" },
+      "problemMatcher": []
+    }
+  ]
+}

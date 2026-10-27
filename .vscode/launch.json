@@ -1,0 +1,44 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API (debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["api.app:app", "--port", "8000"],
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true
+    },
+    {
+      "name": "Train: smoke",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "qihgnn.train",
+      "args": ["--config", "configs/smoke.json"],
+      "cwd": "${workspaceFolder}/ml"
+    },
+    {
+      "name": "Verify",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "qihgnn.verify",
+      "cwd": "${workspaceFolder}/ml"
+    },
+    {
+      "name": "Inspect datasets",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "qihgnn.data.inspection",
+      "cwd": "${workspaceFolder}/ml"
+    },
+    {
+      "name": "Website dev server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/web/scripts/dev.mjs",
+      "cwd": "${workspaceFolder}/web"
+    }
+  ],
+  "compounds": [{ "name": "API + website", "configurations": ["API (debug)", "Website dev server"] }]
+}

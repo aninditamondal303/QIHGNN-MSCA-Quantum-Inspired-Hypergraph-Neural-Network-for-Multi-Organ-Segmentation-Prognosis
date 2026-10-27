@@ -1,0 +1,5 @@
+{
+  "_comment": "Report schedule (Section 4.9): 200 epochs, batch 2, accumulation 8, AdamW 3e-4 warmup+cosine, AMP.",
+  "model": {},
+  "train": {"dataset": "cache"}
+}

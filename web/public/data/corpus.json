@@ -1,0 +1,121 @@
+{
+ "inspected": false,
+ "inspectedAt": null,
+ "labels": [
+  "background",
+  "brain",
+  "liver",
+  "kidney",
+  "cervix",
+  "spleen"
+ ],
+ "corpora": [
+  {
+   "key": "brats2020",
+   "name": "BraTS 2020",
+   "kaggle": "awsaf49/brats2020-training-data",
+   "modality": "MRI (T1, T1ce, T2, FLAIR)",
+   "claimed_channels": [
+    "brain"
+   ],
+   "expected_format": "NIfTI volumes or per-slice .h5 files (image 240x240x4, mask 240x240x3)",
+   "report_cases": 368,
+   "notes": "Survival data (age, survival days, resection) may be included; if so the prognosis head trains on it.",
+   "status": "pending inspection",
+   "supervises": [],
+   "reason": "",
+   "cases": null
+  },
+  {
+   "key": "lits",
+   "name": "LiTS",
+   "kaggle": "harshwardhanbhangale/lits-dataset",
+   "modality": "CT (portal venous)",
+   "claimed_channels": [
+    "liver"
+   ],
+   "expected_format": "NIfTI volumes (volume-*.nii, segmentation-*.nii) or PNG slices",
+   "report_cases": 131,
+   "notes": "Liver and tumour labels are merged into the liver channel.",
+   "status": "pending inspection",
+   "supervises": [],
+   "reason": "",
+   "cases": null
+  },
+  {
+   "key": "cervical",
+   "name": "Cervical cancer segmentation",
+   "kaggle": "balajikartheek/cervical-cancer-segmentation",
+   "modality": "Modality and format are determined by inspection",
+   "claimed_channels": [
+    "cervix"
+   ],
+   "expected_format": "",
+   "report_cases": null,
+   "notes": "Admitted for the cervix channel only if it holds pixel-level cervix masks in volumetric CT/MRI. 2D colposcopy or cytology images are rejected for the 3D network, as SipakMed was in the report.",
+   "status": "pending inspection",
+   "supervises": [],
+   "reason": "",
+   "cases": null
+  },
+  {
+   "key": "kits19",
+   "name": "KiTS19",
+   "kaggle": null,
+   "modality": "CT",
+   "claimed_channels": [
+    "kidney"
+   ],
+   "expected_format": "NIfTI volumes",
+   "report_cases": 210,
+   "notes": "Used in the report; not part of the current dataset list. Kidney stays unsupervised until it is added.",
+   "status": "not registered",
+   "supervises": [],
+   "reason": "",
+   "cases": null
+  }
+ ],
+ "supervisedChannels": [
+  "background"
+ ],
+ "unsupervisedChannels": [
+  "brain",
+  "liver",
+  "kidney",
+  "cervix",
+  "spleen"
+ ],
+ "reportCorpus": {
+  "cases": 709,
+  "rows": [
+   {
+    "name": "BraTS 2020",
+    "modality": "MRI, 4 sequences",
+    "format": "3D NIfTI",
+    "cases": 368,
+    "supervises": "brain"
+   },
+   {
+    "name": "LiTS",
+    "modality": "CT",
+    "format": "2D PNG slices",
+    "cases": 131,
+    "supervises": "liver"
+   },
+   {
+    "name": "KiTS19",
+    "modality": "CT",
+    "format": "2D PNG slices",
+    "cases": 210,
+    "supervises": "kidney"
+   },
+   {
+    "name": "SipakMed",
+    "modality": "Cytology",
+    "format": "2D cell crops",
+    "cases": null,
+    "supervises": "rejected"
+   }
+  ]
+ }
+}
