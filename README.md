@@ -63,7 +63,7 @@ cd qihgnn-msca
 code .
 ```
 
-In VS Code: **Terminal → Run Task → `1. Setup: Python environment`**, then **`2. Setup: web dependencies`**, then **`Start everything`**. Open http://localhost:5173.
+In VS Code: **Terminal → Run Task → `Windows: one-time setup`**, then **`Windows: run all checks`** (verification, every test including the PyTorch model, a smoke training run, the website build and the browser test). Then run **`Start everything`** and open http://localhost:5173.
 
 Or by hand in PowerShell:
 
