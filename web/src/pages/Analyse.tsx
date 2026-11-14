@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { LuCircleAlert, LuFileUp, LuLoader, LuPrinter, LuRotateCcw, LuShieldCheck } from 'react-icons/lu';
 import { Container, PageHead } from '../components/chrome';
+import { CervixTool, LiverTool } from './AnalyseOrgans';
 import { Link, useTitle } from '../lib/router';
 import {
   CLASS_LABEL, CLASSES, classify, fileToGray, predictSurvival, readNifti, SEG_SIZE, segment, segmentBatch, survivalDesign, tumourProbability,
   verdict, volumeSlice, letterbox, type Classification, type Gray, type Resection, type Segmentation, type SurvivalModel, type Verdict, type Volume,
 } from '../lib/screen';
-import { pct, useScreen, type Sample, type ScreenMetrics } from '../lib/screenMetrics';
+import { best3d, pct, useScreen, type Sample, type ScreenMetrics } from '../lib/screenMetrics';
 
 type Stage = 'idle' | 'engine' | 'classify' | 'segment' | 'volume' | 'done' | 'error';
 const STAGE_TEXT: Record<Stage, string> = {
@@ -41,10 +42,58 @@ interface Result3D {
 }
 type Result = Result2D | Result3D;
 
-const isVolumeFile = (name: string) => /\.nii(\.gz)?$/i.test(name);
+export const isVolumeFile = (name: string) => /\.nii(\.gz)?$/i.test(name);
+
+type Mode = 'brain' | 'liver' | 'cervix';
+const MODES: Record<Mode, { tab: string; sub: string; title: string; lead: string }> = {
+  brain: { tab: 'Brain MRI', sub: 'tumour check, outline, prognosis', title: 'Upload a brain MRI.', lead: 'Get a tumour check, an outline with its size, and a survival estimate. The models run inside this browser tab, so the scan is never uploaded anywhere.' },
+  liver: { tab: 'Liver CT', sub: 'liver and tumour outline, burden', title: 'Upload a liver CT.', lead: 'Outline the liver and any tumours on a CT slice, or on a whole CT scan get liver and tumour volume, tumour burden and the number of lesions. Computed in this browser tab.' },
+  cervix: { tab: 'Pap smear', sub: 'cells, nuclei, N:C ratio', title: 'Upload a Pap smear image.', lead: 'Outline every cell and nucleus in a cervical cytology image, count them, and measure each cell’s nucleus-to-cytoplasm ratio, flagging unusual cells for review. Computed in this browser tab.' },
+};
+
+function ModeTabs({ mode, onPick }: { mode: Mode; onPick: (m: Mode) => void }) {
+  return (
+    <div role="tablist" aria-label="Scan type" className="mb-10 grid grid-cols-1 gap-px border border-rule-strong bg-rule-strong sm:grid-cols-3">
+      {(Object.keys(MODES) as Mode[]).map((m) => (
+        <button
+          key={m}
+          type="button"
+          role="tab"
+          aria-selected={mode === m}
+          onClick={() => onPick(m)}
+          className={`flex items-baseline justify-between gap-3 px-5 py-4 text-left transition-colors ${mode === m ? 'bg-fg text-surface' : 'bg-surface hover:bg-raised'}`}
+        >
+          <span className="display text-lead">{MODES[m].tab}</span>
+          <span className={`meta ${mode === m ? 'text-surface/70' : 'text-muted'}`}>{MODES[m].sub}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function Analyse() {
   useTitle('Analyse a scan');
+  const [mode, setMode] = useState<Mode>(() => (new URLSearchParams(window.location.search).get('type') as Mode) || 'brain');
+  const pick = (m: Mode) => {
+    setMode(m);
+    const u = new URL(window.location.href);
+    u.searchParams.set('type', m);
+    window.history.replaceState({}, '', u);
+  };
+  return (
+    <>
+      <PageHead eyebrow="Analyse a scan" title={MODES[mode].title}>{MODES[mode].lead}</PageHead>
+      <Container className="pb-24">
+        <ModeTabs mode={mode} onPick={pick} />
+        {mode === 'brain' && <BrainTool />}
+        {mode === 'liver' && <LiverTool />}
+        {mode === 'cervix' && <CervixTool />}
+      </Container>
+    </>
+  );
+}
+
+function BrainTool() {
   const { metrics, survival, samples, ready, loading } = useScreen();
   const [stage, setStage] = useState<Stage>('idle');
   const [progress, setProgress] = useState(0);
@@ -115,11 +164,6 @@ export function Analyse() {
 
   return (
     <>
-      <PageHead eyebrow="Analyse a scan" title="Upload a brain MRI.">
-        Get a tumour check, an outline with its size, and a survival estimate. The models run inside this browser tab, so the scan is never
-        uploaded anywhere.
-      </PageHead>
-      <Container className="pb-24">
         {!ready && !loading && (
           <div className="mb-8 flex gap-3 border border-vermilion/50 bg-vermilion/5 p-4 text-small" role="status">
             <LuCircleAlert className="mt-0.5 size-5 shrink-0 text-vermilion-text" aria-hidden="true" />
@@ -163,13 +207,12 @@ export function Analyse() {
             )}
           </aside>
         </div>
-      </Container>
     </>
   );
 }
 
 // ------------------------------------------------------------------ input
-function Dropzone({ onFile, disabled }: { onFile: (f: File) => void; disabled: boolean }) {
+export function Dropzone({ onFile, disabled, hint = 'A brain MRI slice as JPG or PNG, or a whole 3D scan as NIfTI (.nii or .nii.gz) to measure tumour volume.', accept = '.jpg,.jpeg,.png,.bmp,.nii,.gz' }: { onFile: (f: File) => void; disabled: boolean; hint?: string; accept?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const onDrop = (e: DragEvent) => {
@@ -187,9 +230,7 @@ function Dropzone({ onFile, disabled }: { onFile: (f: File) => void; disabled: b
     >
       <LuFileUp className="size-10 text-film-muted" aria-hidden="true" />
       <p className="display text-h3 text-film-fg">Drop a scan here</p>
-      <p className="max-w-[44ch] text-small text-film-muted">
-        A brain MRI slice as JPG or PNG, or a whole 3D scan as NIfTI (.nii or .nii.gz) to measure tumour volume.
-      </p>
+      <p className="max-w-[44ch] text-small text-film-muted">{hint}</p>
       <button
         type="button"
         disabled={disabled}
@@ -198,13 +239,13 @@ function Dropzone({ onFile, disabled }: { onFile: (f: File) => void; disabled: b
       >
         Choose a file
       </button>
-      <input ref={input} type="file" accept=".jpg,.jpeg,.png,.bmp,.nii,.gz" className="sr-only" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+      <input ref={input} type="file" accept={accept} className="sr-only" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
       <p className="meta flex items-center gap-1.5 text-film-muted"><LuShieldCheck className="size-3.5" aria-hidden="true" /> Processed on this device. Nothing is uploaded.</p>
     </div>
   );
 }
 
-function Samples({ samples, onPick, disabled }: { samples: Sample[]; onPick: (s: Sample) => void; disabled: boolean }) {
+export function Samples({ samples, onPick, disabled }: { samples: Sample[]; onPick: (s: Sample) => void; disabled: boolean }) {
   return (
     <section className="mt-8" aria-labelledby="samples-title">
       <h2 id="samples-title" className="font-semibold">Or try a held-out test scan</h2>
@@ -396,7 +437,7 @@ function Report({ result, metrics, survival, threshold }: { result: Result; metr
   const cls = result.kind === '2d' ? result.cls : result.cls;
   const v: Verdict | null = cls ? verdict(cls.probs, threshold) : null;
   const tumourCc = result.kind === '3d' ? result.volumeCc : null;
-  const vol3d = metrics?.segmenter?.brats_3d_test?.FLAIR;
+  const vol3d = best3d(metrics);
   return (
     <div className="print-report">
       <p className="meta text-muted">Report · {new Date().toLocaleString()} · {result.name}</p>
@@ -416,7 +457,7 @@ function Report({ result, metrics, survival, threshold }: { result: Result; metr
             <span className="display num text-h3">{tumourCc!.toFixed(1)} cm³</span>
             <span className="mt-1 block text-muted">
               Whole-tumour volume, from {result.areas.filter((a) => a > 0).length} slices with tumour.
-              {vol3d && ` On held-out BraTS scans this estimate was off by a median ${vol3d.volume_abs_error_cc.median?.toFixed(1)} cm³ (r = ${vol3d.volume_pearson_r?.toFixed(2)}).`}
+              {vol3d && ` On held-out BraTS ${vol3d.sequence} scans this estimate was off by a median ${vol3d.volume_abs_error_cc.median?.toFixed(1)} cm³ (${pct(vol3d.volume_rel_error.median, 0)}; r = ${vol3d.volume_pearson_r?.toFixed(2)}).`}
             </span>
           </p>
         )}

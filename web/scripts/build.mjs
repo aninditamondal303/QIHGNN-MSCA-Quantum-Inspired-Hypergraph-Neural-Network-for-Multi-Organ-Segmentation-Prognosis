@@ -85,7 +85,11 @@ export async function writeHtml(cssHash = 'dev', jsHash = 'dev', dev = false) {
     .replace('%BASE%', process.env.BASE_PATH || '/')
     .replace('%RELOAD%', dev ? `<script>new EventSource('/esbuild').addEventListener('change',()=>location.reload())</script>` : '');
   await writeFile(join(DIST, 'index.html'), html);
-  // GitHub Pages serves 404.html for unknown paths: the same app, so deep links like /analyse work.
+  // Every route gets its own index.html so deep links return 200 on static hosts; 404.html covers the rest.
+  for (const route of ['analyse', 'how-it-works', 'accuracy', 'data', 'about']) {
+    await mkdir(join(DIST, route), { recursive: true });
+    await writeFile(join(DIST, route, 'index.html'), html);
+  }
   await writeFile(join(DIST, '404.html'), html);
 }
 

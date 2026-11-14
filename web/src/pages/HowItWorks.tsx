@@ -23,8 +23,9 @@ export function HowItWorks({ cases, api, verification }: { cases: CasesFile | nu
   return (
     <>
       <PageHead eyebrow="How it works" title="From pixels to a prognosis.">
-        Six steps run in your browser when you analyse a scan. Below them is the research model the project began with: one 3D network that
-        learns from datasets that each label a single organ.
+        Six steps run in your browser when you analyse a brain scan; liver CT and Pap smear images follow the same pattern with their own
+        models. Below them is the research model the project began with: one 3D network that learns from datasets that each label a single
+        organ.
       </PageHead>
       <section aria-labelledby="pipeline-title" className="pb-20">
         <Container>
@@ -38,8 +39,18 @@ export function HowItWorks({ cases, api, verification }: { cases: CasesFile | nu
               </li>
             ))}
           </ol>
+          <div className="mt-px grid gap-px bg-rule md:grid-cols-2">
+            <div className="bg-surface p-6">
+              <h3 className="display text-h3">Liver CT</h3>
+              <p className="mt-3 text-small">A 2D U-Net labels every pixel as background, liver or tumour. On a whole CT scan, slices are labelled one by one, voxels are summed with the scan’s own voxel size, and separate lesions are counted as connected regions across slices. A patient is called tumour-positive when tumour burden exceeds the level chosen on validation patients.</p>
+            </div>
+            <div className="bg-surface p-6">
+              <h3 className="display text-h3">Pap smear</h3>
+              <p className="mt-3 text-small">A 2D U-Net on the colour image labels background, cytoplasm and nucleus. Touching cells are separated by growing each nucleus outwards through its cell, so every cell gets its own nucleus-to-cytoplasm ratio. The same algorithm runs in Python for evaluation and in the browser, and a test checks they agree pixel for pixel.</p>
+            </div>
+          </div>
           <p className="mt-6 max-w-[70ch] text-small text-muted">
-            Both networks are exported to ONNX and run with ONNX Runtime Web (WebAssembly).
+            All networks are exported to ONNX and run with ONNX Runtime Web (WebAssembly).
             {exp && ` Each export is checked against PyTorch on the same input: largest difference ${Math.max(exp.classifier.max_abs_diff_vs_torch ?? 0, exp.segmenter.max_abs_diff_vs_torch ?? 0).toExponential(1)}.`}
             {' '}Image preprocessing in the browser mirrors the training code line for line.
           </p>

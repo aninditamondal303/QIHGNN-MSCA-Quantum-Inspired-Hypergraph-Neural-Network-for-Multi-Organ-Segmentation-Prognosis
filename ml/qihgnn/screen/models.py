@@ -56,15 +56,15 @@ def _block(cin: int, cout: int) -> nn.Sequential:
 
 
 class UNet2D(nn.Module):
-    """Plain 2D U-Net, 1 grey channel in, whole-tumour logit out. base=16 gives ~1.9 M parameters."""
+    """Plain 2D U-Net. Defaults: 1 grey channel in, one tumour logit out; base=16 gives ~1.9 M parameters."""
 
-    def __init__(self, base: int = 16, depth: int = 4):
+    def __init__(self, base: int = 16, depth: int = 4, in_ch: int = 1, out_ch: int = 1):
         super().__init__()
         ch = [base * 2 ** i for i in range(depth + 1)]
-        self.down = nn.ModuleList([_block(1, ch[0])] + [_block(ch[i], ch[i + 1]) for i in range(depth)])
+        self.down = nn.ModuleList([_block(in_ch, ch[0])] + [_block(ch[i], ch[i + 1]) for i in range(depth)])
         self.up = nn.ModuleList([nn.ConvTranspose2d(ch[i + 1], ch[i], 2, stride=2) for i in reversed(range(depth))])
         self.dec = nn.ModuleList([_block(ch[i] * 2, ch[i]) for i in reversed(range(depth))])
-        self.head = nn.Conv2d(ch[0], 1, 1)
+        self.head = nn.Conv2d(ch[0], out_ch, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         skips = []
@@ -90,3 +90,14 @@ class SegmenterExport(nn.Module):
 
 def count(m: nn.Module) -> int:
     return sum(p.numel() for p in m.parameters())
+
+
+class SoftmaxExport(nn.Module):
+    """Browser graph for multi-class segmenters: image in [0, 1] -> per-pixel class probabilities."""
+
+    def __init__(self, net: nn.Module):
+        super().__init__()
+        self.net = net
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.softmax(self.net(x), dim=1)

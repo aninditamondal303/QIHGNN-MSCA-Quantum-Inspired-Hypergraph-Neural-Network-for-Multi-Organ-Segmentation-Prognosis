@@ -4,7 +4,7 @@ import { BUILD } from '../lib/build';
 import { Link, useTitle } from '../lib/router';
 
 const DIFFERENT = [
-  ['Detect, outline, measure and estimate in one place', 'Most public projects stop at a classification label. Here the same upload gives the type, the region, its volume and a survival estimate.'],
+  ['Three cancers, one place', 'Brain tumours on MRI, liver tumours on CT and cervical cells on Pap smears. Most public projects stop at one classification label; here an upload gives the type, the region, its size and, for brain tumours, a survival estimate.'],
   ['Honest evaluation', 'Duplicate-aware splits, an independent test set, confidence intervals and a published list of what the numbers do not cover.'],
   ['Calibrated, and allowed to say “I don’t know”', 'Confidence is calibrated on held-out data; the tool abstains below the validated level and rejects images that are not brain MRIs.'],
   ['Private by design', 'Inference runs in the browser. There is no server that could receive a scan.'],
@@ -13,7 +13,7 @@ const DIFFERENT = [
 
 const FAQ = [
   ['Can I use this to find out whether I have a brain tumour?', 'No. It is a research project and has not been clinically validated. Only a doctor reading the full scan with your history can tell you that. If you are worried, see a doctor.'],
-  ['What kind of image works best?', 'An axial (top-down) brain MRI slice through the middle of the head, exported as JPG or PNG, or a whole 3D scan as NIfTI. Photos of a screen, CT scans and X-rays are outside what it was trained on.'],
+  ['What kind of image works best?', 'Brain: an axial brain MRI slice as JPG or PNG, or a whole 3D MRI as NIfTI. Liver: an axial abdominal CT slice, or a whole CT as NIfTI in Hounsfield units. Pap smear: a microscope image of a Papanicolaou-stained smear. Photos of a screen and X-rays are outside what the models were trained on.'],
   ['Why does it sometimes refuse to answer?', 'When its calibrated confidence is below the level validated on held-out data, or when the image does not look like a brain MRI, it says so rather than guessing.'],
   ['How accurate is it?', 'See the Accuracy page: every figure there is measured on images and patients that were not used for training, including an independent dataset.'],
   ['Where does my scan go?', 'Nowhere. It is processed in your browser and discarded when you close the tab.'],
@@ -24,8 +24,8 @@ export function About() {
   return (
     <>
       <PageHead eyebrow="About" title="Built by Anindita Mondal.">
-        QIHGNN-MSCA is an independent project in medical imaging AI: from a 3D research network to a private, browser-based tool that
-        anyone can try, with its accuracy measured in the open.
+        QIHGNN-MSCA is an independent project in medical imaging AI: from a 3D research network for partially labelled multi-organ data to a
+        private, browser-based tool for brain, liver and cervical cancer imaging, with its accuracy measured in the open.
       </PageHead>
       <Container className="pb-24">
         <section aria-labelledby="diff-t" className="border-t border-rule-strong py-12">
@@ -49,6 +49,8 @@ export function About() {
               <li>Trained on public datasets that do not represent every scanner, protocol, population or tumour type. Rarer tumours (for example metastases or lymphoma) are not among the classes.</li>
               <li>A single 2D slice can miss a tumour that is elsewhere in the brain. A whole 3D scan is more reliable.</li>
               <li>The outline was trained on whole-tumour regions (tumour plus surrounding swelling) and does not separate sub-regions.</li>
+              <li>Liver: trained on 2D CT slices from 131 LiTS patients that were already windowed for display; CT scans uploaded in Hounsfield units are shown with a standard abdominal window. Almost all LiTS patients have tumours, so the ability to clear tumour-free scans rests on few examples.</li>
+              <li>Pap smears: the training images outline cells and nuclei but carry no diagnosis. The tool measures nucleus-to-cytoplasm ratios and flags outliers; it does not grade a smear (for example as LSIL or HSIL). Staining and magnification differ between laboratories.</li>
               <li>The prognosis model was fitted on 236 pre-operative glioma patients. It ignores treatment, genetics (such as IDH and MGMT status) and performance status, which matter a great deal; it is a population estimate.</li>
               <li>Accuracy on the independent dataset is lower than on the held-out split of the training data; real-world accuracy can be lower still.</li>
             </ul>

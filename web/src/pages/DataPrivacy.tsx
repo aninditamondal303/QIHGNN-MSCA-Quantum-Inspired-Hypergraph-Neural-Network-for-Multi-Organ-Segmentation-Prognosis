@@ -10,8 +10,8 @@ const DATASETS = [
   { name: 'Brain MRI Images for Brain Tumor Detection', role: 'Independent test only', what: 'About 250 MRI images labelled tumour / no tumour, from a different collection.', href: 'https://www.kaggle.com/datasets/navoneel/brain-mri-images-for-brain-tumor-detection' },
   { name: 'BraTS 2020', role: 'Outline, volume, prognosis; glioma slices for the tumour check', what: '369 pre-operative glioma MRI scans in four sequences with expert tumour segmentations; survival data for 236 patients.', href: 'https://www.kaggle.com/datasets/awsaf49/brats2020-training-data' },
   { name: 'Brain tumour segmentation (2D)', role: 'Outline on skull-on images', what: 'About 3,000 contrast-enhanced T1 slices with tumour masks.', href: 'https://www.kaggle.com/datasets/nikhilroxtomar/brain-tumor-segmentation' },
-  { name: 'LiTS (2D slices)', role: '“Not a brain MRI” examples; liver channel of the research model', what: 'Abdominal CT slices with liver masks.', href: 'https://www.kaggle.com/datasets/harshwardhanbhangale/lits-dataset' },
-  { name: 'Cervical cancer segmentation', role: '“Not a brain MRI” examples', what: 'Colour colposcopy photographs; 2D, so not used to train the 3D model.', href: 'https://www.kaggle.com/datasets/balajikartheek/cervical-cancer-segmentation' },
+  { name: 'LiTS (2D slices)', role: 'Liver and liver-tumour outline; “not a brain MRI” examples; liver channel of the research model', what: '131 abdominal CT scans as slices, with liver and tumour labelled separately.', href: 'https://www.kaggle.com/datasets/harshwardhanbhangale/lits-dataset' },
+  { name: 'Cervical cytology (Pap smear)', role: 'Cell and nucleus outline, N:C ratio; “not a brain MRI” examples', what: '686 Papanicolaou-stained microscope images with about 34,000 cells and their nuclei outlined. No diagnosis labels.', href: 'https://www.kaggle.com/datasets/balajikartheek/cervical-cancer-segmentation' },
 ];
 
 export function DataPrivacy({ corpus }: { corpus: CorpusFile | null }) {
@@ -63,8 +63,8 @@ export function DataPrivacy({ corpus }: { corpus: CorpusFile | null }) {
           </div>
           <div className="col-span-12 space-y-4 text-body lg:col-span-8">
             <p>
-              Splits are made per group, never per image: per patient for BraTS, per CT volume for LiTS, and per cluster of near-identical images
-              for the 2D datasets. Near-identical images are found with a perceptual hash that survives resizing and re-encoding.
+              Splits are made per group, never per image: per patient for BraTS and LiTS, per slide for the cytology images, and per cluster of
+              near-identical images for the 2D brain datasets. Near-identical images are found with a perceptual hash that survives resizing and re-encoding.
             </p>
             {a && (
               <p>

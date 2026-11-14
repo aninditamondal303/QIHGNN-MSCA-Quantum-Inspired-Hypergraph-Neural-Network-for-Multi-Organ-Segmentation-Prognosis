@@ -1,0 +1,69 @@
+[
+ {
+  "file": "test_no_tumour_0.jpg",
+  "truth": "no_tumour",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_no_tumour_1.jpg",
+  "truth": "no_tumour",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_no_tumour_2.jpg",
+  "truth": "no_tumour",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_glioma_3.jpg",
+  "truth": "glioma",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_glioma_4.jpg",
+  "truth": "glioma",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_glioma_5.jpg",
+  "truth": "glioma",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_meningioma_6.jpg",
+  "truth": "meningioma",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_meningioma_7.jpg",
+  "truth": "meningioma",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_meningioma_8.jpg",
+  "truth": "meningioma",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_pituitary_9.jpg",
+  "truth": "pituitary",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_pituitary_10.jpg",
+  "truth": "pituitary",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "test_pituitary_11.jpg",
+  "truth": "pituitary",
+  "source": "Brain Tumor MRI Dataset (test split of this project)"
+ },
+ {
+  "file": "brats_test_t2.nii.gz",
+  "truth": "glioma",
+  "kind": "volume",
+  "true_wt_cc": 256.9,
+  "source": "BraTS 2020 (test split of this project), T2"
+ }
+]

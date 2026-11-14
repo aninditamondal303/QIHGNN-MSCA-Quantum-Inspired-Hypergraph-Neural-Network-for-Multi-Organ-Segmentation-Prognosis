@@ -2,7 +2,7 @@ import { Container, PageHead } from '../components/chrome';
 import { Results } from '../components/Results';
 import { Link, useTitle } from '../lib/router';
 import { CLASS_LABEL, CLASSES } from '../lib/screen';
-import { ci, pct, useScreen, type ScreenMetrics } from '../lib/screenMetrics';
+import { ci, pct, SOURCE_NAMES, useOrgans, useScreen, type ScreenMetrics } from '../lib/screenMetrics';
 import type { MetricsFile, TrainingHistory, Verification } from '../lib/types';
 
 function Card({ k, v, sub }: { k: string; v: string; sub?: string }) {
@@ -102,6 +102,9 @@ function KM({ km }: { km: NonNullable<ScreenMetrics['survival']>['risk_groups'][
 export function Accuracy({ metrics3d, history, verification, loading3d }: { metrics3d: MetricsFile | null; history: TrainingHistory | null; verification: Verification | null; loading3d: boolean }) {
   useTitle('Accuracy');
   const { metrics, ready } = useScreen();
+  const organs = useOrgans();
+  const lv = organs.ready ? organs.metrics?.liver : undefined;
+  const cx = organs.ready ? organs.metrics?.cervix : undefined;
   const t = metrics?.classifier?.test;
   const ext = metrics?.classifier?.external_test;
   const seg = metrics?.segmenter;
@@ -120,7 +123,7 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
             <div className="grid gap-px bg-rule sm:grid-cols-2 lg:grid-cols-4">
               <Card k="Tumours detected (sensitivity)" v={pct(t!.tumour_vs_no_tumour.sensitivity)} sub={ci(t!.tumour_vs_no_tumour.sensitivity_ci)} />
               <Card k="Tumour-free scans cleared (specificity)" v={pct(t!.tumour_vs_no_tumour.specificity)} sub={ci(t!.tumour_vs_no_tumour.specificity_ci)} />
-              <Card k="External dataset accuracy" v={pct(ext?.accuracy)} sub={ext ? `${ext.n} images, ${ci(ext.accuracy_ci)}` : 'not available'} />
+              <Card k="Tumours found, outside dataset" v={pct(ext?.sensitivity)} sub={ext ? `${ext.tp + ext.fn} tumour images, ${ci(ext.sensitivity_ci)}` : 'not available'} />
               <Card k="Survival ranking (C-index)" v={s ? s.cv_c_index.full.mean.toFixed(2) : '—'} sub={s ? `age alone ${s.cv_c_index.age_only.mean.toFixed(2)}` : ''} />
             </div>
 
@@ -142,7 +145,7 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
                 {' '}<span className="font-medium">Abstention.</span> Below {pct(t!.abstention.threshold, 0)} confidence the tool declines to answer: it answers {pct(t!.abstention.coverage)} of test images and is right on {pct(t!.abstention.accuracy_when_answered)} of those.
               </p>
               <p className="mt-3 text-small text-muted">
-                By source: {Object.entries(t!.by_source).map(([k, v]) => `${k} ${pct(v.accuracy)} (${v.n})`).join(' · ')}.
+                By source: {Object.entries(t!.by_source).map(([k, v]) => `${SOURCE_NAMES[k] ?? k} ${pct(v.accuracy)} (${v.n})`).join(' · ')}.
               </p>
             </Block>
 
@@ -150,12 +153,12 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
               <Block id="external" title="Independent dataset" lead="Brain MRI images from a different public collection (yes/no tumour), never used for training. Images that matched any of ours were removed first.">
                 <div className="grid gap-px bg-rule sm:grid-cols-3">
                   <Card k="Sensitivity" v={pct(ext.sensitivity)} sub={ci(ext.sensitivity_ci)} />
-                  <Card k="Specificity" v={pct(ext.specificity)} sub={ci(ext.specificity_ci)} />
+                  <Card k="Specificity" v={ext.tn + ext.fp < 20 ? 'n/a' : pct(ext.specificity)} sub={ext.tn + ext.fp < 20 ? `only ${ext.tn + ext.fp} tumour-free images left` : ci(ext.specificity_ci)} />
                   <Card k="AUC" v={ext.auc?.toFixed(3) ?? '—'} sub={`${ext.n} images`} />
                 </div>
                 <p className="mt-4 text-small text-muted">
-                  {ext.removed_as_copies_of_training_data} images were removed as copies of our training data; {ext.rejected_as_not_brain_mri} were flagged as not a brain MRI.
-                  A drop from the in-distribution numbers is expected and is the more realistic estimate.
+                  The collection ships every image twice; after removing those{ext.internal_duplicates_removed != null && ` (${ext.internal_duplicates_removed})`} and {ext.removed_as_copies_of_training_data} images that are copies of images in our own data — almost all of its tumour-free images turned out to be copies — {ext.n} images remain, {ext.tn + ext.fp} of them tumour-free. That is too few to measure specificity, so only sensitivity and AUC are meaningful here.
+                  Sensitivity is lower than on our own test split: at the default threshold the model is more conservative on images from another source, while the ranking (AUC) stays high. This is the more realistic estimate.
                 </p>
               </Block>
             )}
@@ -171,13 +174,13 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
                   </tbody>
                 </table>
                 {seg.figshare_test && <p className="mt-4 text-small">Skull-on T1 contrast images: Dice {seg.figshare_test.dice.mean?.toFixed(3)} (n {seg.figshare_test.dice.n}). <span className="text-muted">{seg.figshare_test.note}</span></p>}
-                {Object.entries(seg.brats_3d_test).map(([k, v]) => (
+                {Object.entries(seg.brats_3d_test).map(([k, v], i) => (
                   <div key={k} className="mt-8 grid gap-6 sm:grid-cols-[1fr_auto]">
                     <div className="text-small">
                       <p className="font-medium">Whole 3D scans, {k}, {v.patients} test patients</p>
                       <p className="mt-2">3D Dice {v.dice3d.mean?.toFixed(3)}; volume error median {v.volume_abs_error_cc.median?.toFixed(1)} cm³ ({pct(v.volume_rel_error.median)}); correlation r = {v.volume_pearson_r?.toFixed(3)}.</p>
                     </div>
-                    {k === 'FLAIR' && <Scatter pairs={v.pairs} />}
+                    {i === 0 && <Scatter pairs={v.pairs} />}
                   </div>
                 ))}
               </Block>
@@ -195,13 +198,43 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
                 </table>
                 <div className="mt-8"><KM km={s.risk_groups.km} /></div>
                 <p className="mt-3 text-small">Log-rank test across the three groups: p = {s.risk_groups.logrank_p < 0.001 ? s.risk_groups.logrank_p.toExponential(1) : s.risk_groups.logrank_p.toFixed(3)}.
-                  {' '}BraTS survival classes (under 10, 10 to 15, over 15 months): {pct(s.survival_class_accuracy.accuracy)} correct, against {pct(s.survival_class_accuracy.majority_class_baseline)} for always guessing the commonest class.
+                  {' '}Sorting patients into the BraTS survival classes (under 10, 10 to 15, over 15 months) gives {pct(s.survival_class_accuracy.accuracy)} correct, {s.survival_class_accuracy.accuracy <= s.survival_class_accuracy.majority_class_baseline + 0.01 ? 'no better than' : 'against'} {pct(s.survival_class_accuracy.majority_class_baseline)} for always guessing the commonest class: the model ranks risk, but does not predict a patient’s survival class.
                 </p>
                 <p className="mt-3 text-small text-muted">Survival is hard to predict from imaging and age alone; published BraTS challenge results sit in a similar range. The tool reports the uncertainty band for that reason.</p>
               </Block>
             )}
           </>
         )}
+        {lv && (
+          <Block id="liver" title="Liver CT" lead={`${lv.architecture}. ${organs.metrics!.liver_data?.volumes} LiTS patients, split per patient; ${lv.test_patients} held out for testing (${lv.patients_with_tumour} with tumours).`}>
+            <div className="grid gap-px bg-rule sm:grid-cols-2 lg:grid-cols-4">
+              <Card k="Liver Dice, whole scan" v={lv.volume_dice_liver.mean?.toFixed(3) ?? '—'} />
+              <Card k="Tumour Dice, whole scan" v={lv.volume_dice_tumour.mean?.toFixed(3) ?? '—'} />
+              <Card k="Patients with tumour found" v={pct(lv.patient_detection?.sensitivity)} sub={lv.patient_detection ? ci(lv.patient_detection.sensitivity_ci) : ''} />
+              <Card k="Tumour-free patients cleared" v={pct(lv.patient_detection?.specificity)} sub={lv.patient_detection ? `${lv.patient_detection.tn + lv.patient_detection.fp} patients, ${ci(lv.patient_detection.specificity_ci)}` : ''} />
+            </div>
+            <p className="mt-4 text-small">
+              Per slice: liver Dice {lv.slice_dice_liver.mean?.toFixed(3)} (n {lv.slice_dice_liver.n}), tumour Dice {lv.slice_dice_tumour.mean?.toFixed(3)} (n {lv.slice_dice_tumour.n}).
+              Tumour burden (tumour as a share of the liver) estimated against expert: r = {lv.burden_pearson_r?.toFixed(3)}.
+            </p>
+            <p className="mt-3 text-small text-muted">
+              Most LiTS patients have tumours, so the tumour-free group is small and its interval wide. {lv.note} The patient-level threshold was chosen on validation patients, not on the test set.
+            </p>
+          </Block>
+        )}
+
+        {cx && (
+          <Block id="cytology" title="Pap smear cytology" lead={`${cx.architecture}. ${organs.metrics!.cervix_data?.images} images from ${organs.metrics!.cervix_data?.slide_groups} slides, split per slide; ${cx.test_images} images held out.`}>
+            <div className="grid gap-px bg-rule sm:grid-cols-2 lg:grid-cols-4">
+              <Card k="Nucleus Dice" v={cx.dice_nucleus.mean?.toFixed(3) ?? '—'} />
+              <Card k="Cell Dice" v={cx.dice_cell.mean?.toFixed(3) ?? '—'} />
+              <Card k="Nuclei count, median error" v={cx.nucleus_count_abs_error.median?.toFixed(0) ?? '—'} sub={cx.nucleus_count_pearson_r != null ? `r = ${cx.nucleus_count_pearson_r.toFixed(3)}` : ''} />
+              <Card k="Median N:C, error" v={cx.median_nc_abs_error.median?.toFixed(3) ?? '—'} sub={cx.median_nc_pearson_r != null ? `r = ${cx.median_nc_pearson_r.toFixed(3)}` : ''} />
+            </div>
+            <p className="mt-4 text-small text-muted">{cx.note} The review threshold ({cx.unusual_nc_threshold?.toFixed(2)}) is the 99th percentile of N:C ratios over annotated cells in the training slides.</p>
+          </Block>
+        )}
+
         <section className="border-t border-rule-strong pt-6 text-small text-muted">
           <p>How the data was split and de-duplicated: <Link to="/data">Data & privacy</Link>. What the numbers do not cover: <Link to="/about#limitations">limitations</Link>.</p>
         </section>

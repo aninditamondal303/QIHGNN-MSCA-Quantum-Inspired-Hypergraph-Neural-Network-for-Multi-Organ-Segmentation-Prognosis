@@ -60,7 +60,7 @@ export interface ScreenMetrics {
       ece_before_calibration?: number;
       abstention: { threshold: number; coverage: number; accuracy_when_answered: number | null };
     };
-    external_test?: Binary & { rejected_as_not_brain_mri: number; removed_as_copies_of_training_data: number };
+    external_test?: Binary & { rejected_as_not_brain_mri: number; removed_as_copies_of_training_data: number; internal_duplicates_removed?: number };
   };
   segmenter?: {
     architecture: string;
@@ -110,3 +110,73 @@ export function useScreen() {
 
 export const pct = (x: number | null | undefined, digits = 1) => (x === null || x === undefined || Number.isNaN(x) ? '—' : `${(x * 100).toFixed(digits)}%`);
 export const ci = (c: [number, number] | undefined) => (c ? `${(c[0] * 100).toFixed(1)}–${(c[1] * 100).toFixed(1)}%` : '');
+
+export interface OrganMetrics {
+  generated_at: string;
+  probe: boolean;
+  liver_data?: { volumes: number; slices: number; splits: Record<string, number> };
+  liver?: {
+    architecture: string;
+    parameters: number;
+    patient_threshold_burden: number;
+    test_patients: number;
+    patients_with_tumour: number;
+    slice_dice_liver: Summary;
+    slice_dice_tumour: Summary;
+    volume_dice_liver: Summary;
+    volume_dice_tumour: Summary;
+    patient_detection: Binary | null;
+    burden_pearson_r: number | null;
+    burden_pairs: [number, number][];
+    lesion_count_pairs: [number, number][];
+    note: string;
+  };
+  cervix_data?: { images: number; slide_groups: number; splits: Record<string, number>; cells_annotated: number; nuclei_annotated: number };
+  cervix?: {
+    architecture: string;
+    parameters: number;
+    test_images: number;
+    dice_nucleus: Summary;
+    dice_cell: Summary;
+    nucleus_count_abs_error: Summary;
+    nucleus_count_pearson_r: number | null;
+    nucleus_count_pairs: [number, number][];
+    median_nc_abs_error: Summary;
+    median_nc_pearson_r: number | null;
+    training_nc_distribution: Summary;
+    unusual_nc_threshold: number | null;
+    note: string;
+  };
+  export?: Record<'liver' | 'cervix', { file: string; bytes: number; max_abs_diff_vs_torch?: number }>;
+}
+
+export interface OrganSample {
+  file: string;
+  truth: string;
+  kind: 'liver' | 'liver-volume' | 'cervix';
+  source: string;
+  nuclei_annotated?: number;
+}
+
+export function useOrgans() {
+  const metrics = useJson<OrganMetrics>('screen/organs_metrics.json');
+  const samples = useJson<OrganSample[]>('screen/samples/organs_index.json');
+  const ready = !!metrics.data && !metrics.data.probe && !!metrics.data.export;
+  return { metrics: metrics.data, samples: samples.data ?? [], loading: metrics.loading, ready };
+}
+
+/** The 3D volume evaluation for the sequence that performed best (T2 in the published run). */
+export function best3d(m: ScreenMetrics | null | undefined) {
+  const e = Object.entries(m?.segmenter?.brats_3d_test ?? {});
+  e.sort((a, b) => (b[1].dice3d.mean ?? 0) - (a[1].dice3d.mean ?? 0));
+  return e[0] ? { sequence: e[0][0], ...e[0][1] } : undefined;
+}
+
+export const SOURCE_NAMES: Record<string, string> = {
+  'brain-mri-4class': 'Brain MRI dataset',
+  'brats-slices': 'BraTS slices',
+  'abdominal-ct': 'Abdominal CT',
+  'colposcopy-photo': 'Pap smear images',
+  'cervical-cytology': 'Pap smear images',
+  synthetic: 'Synthetic non-medical',
+};

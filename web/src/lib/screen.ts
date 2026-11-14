@@ -178,7 +178,7 @@ export function volumeSlice(vol: Volume, z: number): Gray {
 
 // ---------------------------------------------------------------- ONNX Runtime
 type Ort = typeof import('onnxruntime-web/wasm');
-type Session = Awaited<ReturnType<Ort['InferenceSession']['create']>>;
+export type Session = Awaited<ReturnType<Ort['InferenceSession']['create']>>;
 let ortPromise: Promise<Ort> | null = null;
 const sessions: Record<string, Promise<Session>> = {};
 
@@ -193,7 +193,7 @@ export function loadOrt(): Promise<Ort> {
   return ortPromise;
 }
 
-export function session(name: 'classifier' | 'segmenter'): Promise<Session> {
+export function session(name: 'classifier' | 'segmenter' | 'liver' | 'cervix'): Promise<Session> {
   if (!sessions[name]) {
     sessions[name] = loadOrt().then((ort) => ort.InferenceSession.create(new URL(`screen/${name}.onnx`, document.baseURI).href, { executionProviders: ['wasm'] }));
   }

@@ -3,7 +3,7 @@ import { Container } from '../components/chrome';
 import { CountUp, Reveal, Ticker } from '../components/fx';
 import { Hero } from '../components/Hero';
 import { Link, useTitle } from '../lib/router';
-import { pct, useScreen } from '../lib/screenMetrics';
+import { best3d, pct, useOrgans, useScreen } from '../lib/screenMetrics';
 import type { CaseInfo } from '../lib/types';
 
 function Stat({ value, label, n, format }: { value: string; label: string; n?: number; format?: (v: number) => string }) {
@@ -18,16 +18,19 @@ function Stat({ value, label, n, format }: { value: string; label: string; n?: n
 export function Home({ cases }: { cases: CaseInfo[] }) {
   useTitle('');
   const { metrics, ready } = useScreen();
+  const organs = useOrgans();
+  const lv = organs.metrics?.liver;
+  const cx = organs.metrics?.cervix;
   const t = metrics?.classifier?.test;
   const ext = metrics?.classifier?.external_test;
-  const seg = metrics?.segmenter?.brats_3d_test?.FLAIR;
+  const seg = best3d(metrics);
   const surv = metrics?.survival?.cv_c_index?.full;
   const m = (v: string) => (ready ? v : '—');
 
   return (
     <>
       <Hero cases={cases}>
-        <p className="meta mb-6 text-muted">Brain tumour detection · outlining · prognosis</p>
+        <p className="meta mb-6 text-muted">Brain · liver · cervix — detection, outlining, measurement</p>
         {/* Sized in container units so the longest line fills the column at any width. */}
         <h1 id="hero-title" className="display leading-[0.86]" style={{ fontSize: 'calc(100cqi / 9.3)' }}>
           <span className="block">See it.</span>
@@ -35,8 +38,8 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
           <span className="block">Explain it.</span>
         </h1>
         <p className="mt-8 max-w-[54ch] text-lead font-light">
-          Upload a brain MRI. QIHGNN-MSCA checks it for a tumour, outlines it, measures it and estimates survival, privately, inside your
-          browser. Every number on this site is measured on scans the models never saw.
+          Upload a brain MRI, a liver CT or a Pap smear image. QIHGNN-MSCA finds and outlines what matters, measures it, and for brain
+          tumours estimates survival, privately, inside your browser. Every number on this site is measured on scans the models never saw.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link to="/analyse" className="inline-flex h-12 items-center gap-2 bg-fg px-5 font-medium text-surface no-underline hover:bg-cobalt">
@@ -49,7 +52,7 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
         <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-7 pt-12">
           <Stat value={m(pct(t?.tumour_vs_no_tumour.sensitivity))} n={ready ? t?.tumour_vs_no_tumour.sensitivity : undefined} format={(v) => pct(v)} label="of tumours detected on held-out test scans (sensitivity)." />
           <Stat value={m(pct(t?.tumour_vs_no_tumour.specificity))} n={ready ? t?.tumour_vs_no_tumour.specificity : undefined} format={(v) => pct(v)} label="of tumour-free scans correctly cleared (specificity)." />
-          <Stat value={m(pct(ext?.accuracy))} n={ready ? ext?.accuracy : undefined} format={(v) => pct(v)} label="accuracy on an independent dataset from a different source." />
+          <Stat value={m(pct(ext?.sensitivity))} n={ready ? ext?.sensitivity : undefined} format={(v) => pct(v)} label="of tumours found on an independent dataset the models never trained on." />
           <Stat value={ready && seg?.dice3d.mean != null ? seg.dice3d.mean.toFixed(2) : '—'} n={ready && seg?.dice3d.mean != null ? seg.dice3d.mean : undefined} format={(v) => v.toFixed(2)} label="Dice overlap of 3D tumour outlines with expert segmentations." />
         </div>
       </Hero>
@@ -58,7 +61,7 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
         items={ready && t ? [
           `${pct(t.tumour_vs_no_tumour.sensitivity)} sensitivity`,
           `${pct(t.tumour_vs_no_tumour.specificity)} specificity`,
-          ext ? `${pct(ext.accuracy)} on outside data` : 'tested on outside data',
+          ext ? `${pct(ext.sensitivity)} of tumours found on outside data` : 'tested on outside data',
           seg?.dice3d.mean != null ? `${seg.dice3d.mean.toFixed(2)} Dice in 3D` : '3D outlines',
           surv ? `C-index ${surv.mean.toFixed(2)}` : 'survival curves',
           '0 bytes uploaded',
@@ -68,20 +71,21 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
       <section className="border-t border-rule-strong py-16 md:py-24" aria-labelledby="what-title">
         <Container>
           <div className="grid grid-cols-12 gap-x-6 gap-y-10">
-            <h2 id="what-title" className="display col-span-12 text-h2 md:col-span-5"><Reveal>Three answers from one scan.</Reveal></h2>
-            <div className="col-span-12 grid gap-px bg-rule md:col-span-7 md:grid-cols-3">
+            <h2 id="what-title" className="display col-span-12 text-h2 md:col-span-4"><Reveal>Three cancers. One private tool.</Reveal></h2>
+            <div className="col-span-12 grid gap-px bg-rule md:col-span-8 md:grid-cols-3">
               {[
-                { icon: LuScanSearch, t: 'Detect', d: 'No tumour, glioma, meningioma or pituitary tumour. Unclear images and images that are not brain MRIs are flagged, not guessed.', s: ready && t ? `${pct(t.accuracy)} accuracy over 5 classes` : 'Accuracy published after training' },
-                { icon: LuBrain, t: 'Outline', d: 'The tumour drawn on the scan. On a 3D scan, every slice is outlined and the volume is measured in cm³.', s: ready && seg ? `median volume error ${seg.volume_abs_error_cc.median?.toFixed(1)} cm³` : 'Error published after training' },
-                { icon: LuChartLine, t: 'Prognosis', d: 'An estimated survival curve for glioma, from age, tumour volume and extent of surgery, with its uncertainty band.', s: ready && surv ? `concordance ${surv.mean.toFixed(2)}, cross-validated` : 'Concordance published after training' },
-              ].map(({ icon: Icon, t: title, d, s }, i) => (
+                { icon: LuBrain, to: '/analyse?type=brain', t: 'Brain MRI', d: 'Tumour or not, and which type: glioma, meningioma or pituitary. Outline, volume on 3D scans, a decision heat map and a survival estimate for glioma.', s: ready && t ? `${pct(t.tumour_vs_no_tumour.sensitivity)} of tumours found` : 'Accuracy published after training' },
+                { icon: LuScanSearch, to: '/analyse?type=liver', t: 'Liver CT', d: 'Liver and liver tumours outlined slice by slice. On a whole CT: liver and tumour volume, tumour burden and the number of lesions.', s: organs.ready && lv?.volume_dice_tumour.mean != null ? `tumour Dice ${lv.volume_dice_tumour.mean.toFixed(2)} on held-out patients` : 'Accuracy published after training' },
+                { icon: LuChartLine, to: '/analyse?type=cervix', t: 'Pap smear', d: 'Every cell and nucleus outlined and counted; nucleus-to-cytoplasm ratio per cell, with unusual cells flagged for a cytologist to review.', s: organs.ready && cx?.dice_nucleus.mean != null ? `nucleus Dice ${cx.dice_nucleus.mean.toFixed(2)} on held-out slides` : 'Accuracy published after training' },
+              ].map(({ icon: Icon, to, t: title, d, s }, i) => (
                 <Reveal key={title} delay={i * 120} className="flex bg-surface">
-                <article className="flex flex-col p-6">
+                <Link to={to} className="group flex flex-col p-6 no-underline hover:bg-raised">
                   <Icon className="size-6 text-cobalt" aria-hidden="true" />
                   <h3 className="display mt-6 text-h3">{title}</h3>
                   <p className="mt-3 text-small">{d}</p>
                   <p className="meta mt-auto pt-6 text-muted">{s}</p>
-                </article>
+                  <span className="mt-4 inline-flex items-center gap-2 text-small">Analyse <LuArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
+                </Link>
                 </Reveal>
               ))}
             </div>

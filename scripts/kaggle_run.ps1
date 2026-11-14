@@ -4,12 +4,13 @@
 # Needs Kaggle credentials: %USERPROFILE%\.kaggle\access_token + username (new tokens), or kaggle.json (legacy).
 # Uploads ml/ as a private Kaggle dataset, pushes a private kernel with the three datasets attached,
 # waits for it to finish and downloads its output to kaggle_output\. Progress goes to kaggle.log.
-param([ValidateSet("probe", "train")][string]$Mode = "probe",
-      [ValidateSet("main", "screen")][string]$Job = "main")
+param([ValidateSet("probe", "probe-train", "train")][string]$Mode = "probe",
+      [ValidateSet("main", "screen", "organs")][string]$Job = "main",
+      [switch]$WaitOnly)   # skip upload and push: keep waiting for the kernel already running, then download its output
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
-$suffix = $(if ($Job -eq "screen") { "_screen" } else { "" })
+$suffix = $(if ($Job -eq "main") { "" } else { "_$Job" })
 $log = Join-Path $root "kaggle$suffix.log"
 function Log($m) { $line = "$(Get-Date -Format s) $m"; Write-Host $line; Add-Content -Path $log -Value $line }
 function Run($exe, [string[]]$a) { $o = & cmd /c "`"$exe`" $($a -join ' ') 2>&1"; $o | ForEach-Object { Add-Content -Path $log -Value "    $_" }; return ($o -join "`n") }
@@ -60,6 +61,7 @@ if (Test-Path $cfg) {
 }
 Log "==== job=$Job mode=$Mode kaggle user=$user"
 
+if (-not $WaitOnly) {
 # ---------------------------------------------------------------- code dataset
 $build = Join-Path $root "kaggle_build$suffix"
 if (Test-Path $build) { Remove-Item $build -Recurse -Force }
@@ -87,9 +89,9 @@ Start-Sleep -Seconds 20   # let the new version propagate before the kernel moun
 # ---------------------------------------------------------------- kernel
 $kern = Join-Path $build "kernel"
 New-Item -ItemType Directory -Force $kern | Out-Null
-$entry = $(if ($Job -eq "screen") { "kaggle\screen.py" } else { "kaggle\run.py" })
+$entry = $(if ($Job -eq "main") { "kaggle\run.py" } else { "kaggle\$Job.py" })
 (Get-Content (Join-Path $root $entry) -Raw).Replace("__MODE__", $Mode) | Set-Content (Join-Path $kern "run.py") -Encoding ascii
-$kid = $(if ($Job -eq "screen") { "$user/qihgnn-msca-screen" } else { "$user/qihgnn-msca-train" })
+$kid = $(if ($Job -eq "main") { "$user/qihgnn-msca-train" } else { "$user/qihgnn-msca-$Job" })
 $sources = @($dsId, "awsaf49/brats2020-training-data", "harshwardhanbhangale/lits-dataset", "balajikartheek/cervical-cancer-segmentation")
 if ($Job -eq "screen") {
     $sources += @("masoudnickparvar/brain-tumor-mri-dataset", "navoneel/brain-mri-images-for-brain-tumor-detection", "nikhilroxtomar/brain-tumor-segmentation")
@@ -114,19 +116,23 @@ $push = Run $kaggle @("-m", "kaggle", "kernels", "push", "-p", "`"$kern`"")
 Log $push
 if ($push -match "error|Error|403|401") { throw "kernel push failed: $push" }
 
+}
+$kid = $(if ($Job -eq "main") { "$user/qihgnn-msca-train" } else { "$user/qihgnn-msca-$Job" })
+
 # ---------------------------------------------------------------- wait
+# Only Kaggle's own status values end the wait; network errors while polling are logged and retried.
 $deadline = (Get-Date).AddHours(12.5)
 do {
     Start-Sleep -Seconds 60
     $s = Run $kaggle @("-m", "kaggle", "kernels", "status", $kid)
     Log "status: $($s.Trim())"
-} until ($s -match "complete|error|cancel" -or (Get-Date) -gt $deadline)
+} until ($s -match "KernelWorkerStatus\.(COMPLETE|ERROR|CANCEL)" -or (Get-Date) -gt $deadline)
 
 # ---------------------------------------------------------------- output
-$outDir = Join-Path $root $(if ($Job -eq "screen") { "kaggle_output\screen-$Mode" } else { "kaggle_output\$Mode" })
+$outDir = Join-Path $root $(if ($Job -eq "main") { "kaggle_output\$Mode" } else { "kaggle_output\$Job-$Mode" })
 if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
 New-Item -ItemType Directory -Force $outDir | Out-Null
 Run $kaggle @("-m", "kaggle", "kernels", "output", $kid, "-p", "`"$outDir`"") | Out-Null
 Log "Output downloaded to $outDir"
 Get-ChildItem $outDir -Recurse | Select-Object -First 40 | ForEach-Object { Log "  $($_.FullName.Substring($outDir.Length))" }
-if ($s -match "complete") { Log "==== DONE ($Mode)" } else { Log "==== FAILED ($Mode): see the .log file in $outDir" }
+if ($s -match "KernelWorkerStatus\.COMPLETE") { Log "==== DONE ($Mode)" } else { Log "==== FAILED ($Mode): see the .log file in $outDir" }

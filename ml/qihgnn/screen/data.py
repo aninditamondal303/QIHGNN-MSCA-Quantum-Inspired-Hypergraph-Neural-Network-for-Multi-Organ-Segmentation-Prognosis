@@ -23,7 +23,7 @@ from ..data.survival import parse_days
 from .common import SEG_SIZE, dhash_canonical, duplicate_groups, group_split, letterbox, load_gray, to_uint8
 
 IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
-SEQUENCES = ("T1", "T1ce", "T2", "FLAIR")   # channel order inside the BraTS .h5 slices
+SEQUENCES = ("FLAIR", "T1", "T1ce", "T2")   # channel order inside the BraTS .h5 slices (verified: CSF bright in channel 3)
 
 
 @dataclass

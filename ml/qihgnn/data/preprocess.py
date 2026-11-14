@@ -47,6 +47,10 @@ def rescale_display_mask(mask: np.ndarray) -> np.ndarray:
     """
     m = np.asarray(mask)
     values = np.unique(m)
+    if values.max(initial=0) <= 15:
+        # Label-coded masks (LiTS mirror: 0 background, 1 liver, 2 tumour, plus the odd 3 from JPEG noise) are
+        # already small integers; thresholding them as display images would erase them.
+        return m.astype(np.uint8)
     if values.size <= 2 and values.max(initial=0) == 255:
         return (m > 127).astype(np.uint8)
     if values.max(initial=0) > 2 and values.size > 3:

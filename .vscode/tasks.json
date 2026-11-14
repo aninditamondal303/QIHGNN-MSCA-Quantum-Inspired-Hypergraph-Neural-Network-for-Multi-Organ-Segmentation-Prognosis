@@ -13,6 +13,42 @@
   },
   "tasks": [
     {
+      "label": "Kaggle: liver + cervix - wait and download",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode train -Job organs -WaitOnly",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: 3D model - wait and download",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode train -Job main -WaitOnly",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: screening models - wait and download",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode train -Job screen -WaitOnly",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: liver + cervix - train (GPU)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode train -Job organs",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: liver + cervix - rehearse training (CPU)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode probe-train -Job organs",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: liver + cervix - inspect data (CPU, minutes)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode probe -Job organs",
+      "problemMatcher": []
+    },
+    {
       "label": "Kaggle: screening models - train (GPU, about 2 h)",
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode train -Job screen",
@@ -170,7 +206,7 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Multi-page site with in-browser tumour detection, outlining and prognosis; screening models pipeline; duplicate-aware evaluation' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Publish trained brain screening models with measured results; add liver CT and Pap smear tools' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {

@@ -142,12 +142,54 @@ A dataset may supervise an organ only if it provides pixel-level masks for that 
 
 ## Results
 
+All figures are on held-out data: patients (BraTS), CT volumes, slides, or near-duplicate clusters never seen in training. 95% Wilson intervals in brackets. Source: `web/public/screen/screen_metrics.json`, produced by `python -m qihgnn.screen.train` on a Kaggle T4.
+
+### Brain MRI: tumour check (1596 test images)
+
+| Measure | Value |
+|---|---|
+| 5-class accuracy (no tumour, glioma, meningioma, pituitary, not a brain MRI) | **97.4%** (96.5–98.0%), macro F1 0.974 |
+| Tumours detected (sensitivity) | **98.4%** (97.4–99.0%) |
+| Tumour-free scans cleared (specificity) | **98.8%** (97.0–99.5%) |
+| Tumour vs no tumour, ROC AUC | 0.9935 |
+| Per-class recall | no tumour 98.8%, glioma 96.0%, meningioma 92.7%, pituitary 99.6%, not a brain MRI 100.0% |
+| Calibration error (ECE) | 1.2% after temperature scaling (3.7% before) |
+| Abstention | answers 98.5% of images (confidence ≥ 0.74) and is right on 98.0% of those |
+| Independent dataset (Brain MRI Images for Brain Tumor Detection) | 108 tumour images: sensitivity 75.9% (67.1–83.0%), AUC 0.986; only 2 tumour-free images survive de-duplication, too few for specificity |
+
+**Leakage in the public split.** 935 of the dataset's 1600 official test images have a near-identical copy (perceptual hash, including flips and rotations) in its training folder; 4309 of 7200 images sit in 1303 duplicate clusters. Splitting by cluster removes that inflation.
+
+### Brain MRI: outline and volume (BraTS 2020, 52 test patients)
+
+| Measure | Value |
+|---|---|
+| Dice on tumour slices, by input sequence | FLAIR 0.674, T2 0.622, T1 0.534, T1ce 0.504 |
+| False alarms on tumour-free slices | 1.4%–4.3% |
+| Whole-volume Dice (T2, slice by slice) | **0.749** |
+| Whole-tumour volume error (T2) | median 8.9 cm³ (13.6%), r = 0.957 |
+| Skull-on contrast T1 slices (figshare) | Dice 0.704 (image-level split; no patient IDs) |
+
+### Brain MRI: prognosis (BraTS 2020 survival, 236 patients, 235 deaths)
+
+| Model | Cross-validated C-index |
+|---|---|
+| Age, tumour volume, extent of resection | **0.634** ± 0.038 |
+| Age only | 0.621 |
+| Age and resection | 0.625 |
+| Tumour volume only | 0.558 |
+
+Out-of-fold risk thirds separate clearly (log-rank p = 1.7e-06), but assigning BraTS survival classes is no better than the majority class (37.9% vs 37.9%). The tool therefore reports a risk ranking and a survival curve with its bootstrap band, not a predicted survival class.
+
+### Liver CT and Pap smear
+
+Liver tumour and cervical cytology models are trained with `python -m qihgnn.screen.organs`; their measured results appear on the site's Accuracy page and in `web/public/screen/organs_metrics.json` once published.
+
+### Research model (3D QIHGNN-MSCA)
+
 | | Status |
 |---|---|
 | Mathematics of the objective, parameter budget, attention cost, MPO compression | **Measured**, 9/9 checks passing (`results/verification.json`) |
-| Per-organ Dice, HD95, C-index, time-dependent AUC | **Not yet measured.** Filled in by `qihgnn.evaluate` after a converged run |
-
-The site and the API never show a segmentation or prognosis number that the evaluation script has not written. The report's preliminary Dice of 0.173 came from a short, unconverged run and is not reproduced here.
+| Per-organ Dice, HD95, C-index, time-dependent AUC | Filled in by `qihgnn.evaluate` after the Kaggle GPU run |
 
 ## Website design notes
 

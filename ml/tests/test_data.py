@@ -177,3 +177,10 @@ def test_brats_h5_ids_follow_the_mirror_numbering():
 
     assert h5_id_offset({1: 0, 2: 0, 369: 0}) == 0 and brats_h5_patient_id(1, 0) == "BraTS20_Training_001"
     assert h5_id_offset({0: 0, 368: 0}) == 1 and brats_h5_patient_id(368, 1) == "BraTS20_Training_369"
+
+
+def test_label_coded_jpeg_masks_survive():
+    # LiTS mirror masks store 0/1/2 (and JPEG noise 3) directly; they must not be thresholded away.
+    m = np.array([[0, 1, 1], [2, 3, 0]], np.uint8)
+    out = P.rescale_display_mask(m)
+    assert out.tolist() == m.tolist() and (out > 0).sum() == 4
