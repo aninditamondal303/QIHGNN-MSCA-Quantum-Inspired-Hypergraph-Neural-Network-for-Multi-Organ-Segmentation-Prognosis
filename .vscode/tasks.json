@@ -158,13 +158,31 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Fix NaN in JSON output, detach logged losses, move API to port 8765, pin Windows tasks to .venv'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Add deployment (Dockerfile, GitHub Pages workflow, DEPLOY guide) and Kaggle GPU pipeline'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {
       "label": "Git: push to GitHub (aninditamondal303/qihgnn-msca)",
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File scripts\\github_publish.ps1",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: probe data loaders (CPU, minutes)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode probe",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: train and evaluate (GPU, hours)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode train",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: build and run production image (port 7860)",
+      "type": "shell",
+      "command": "docker build -t qihgnn-msca . ; docker run --rm -p 7860:7860 qihgnn-msca",
       "problemMatcher": []
     }
   ]

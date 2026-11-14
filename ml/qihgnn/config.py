@@ -73,6 +73,7 @@ class TrainConfig:
     dataset: str = "cache"  # "cache" (preprocessed corpora) or "phantom" (synthetic smoke test)
     phantom_cases: int = 12
     max_steps_per_epoch: int = 0  # 0 = full epoch
+    time_limit_hours: float = 0.0  # 0 = no limit; otherwise stop cleanly after the epoch that crosses it
     extra: dict = field(default_factory=dict)
 
 

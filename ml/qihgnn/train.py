@@ -139,6 +139,7 @@ def main() -> None:
     print(f"run {run_id} on {device}: {len(train_ds)} train / {len(val_ds)} val, unsupervised={unsupervised}")
 
     history = []
+    started = time.time()
     log = (run_dir / "history.csv").open("w", newline="")
     writer = csv.writer(log)
     writer.writerow(["epoch", "train_total", "train_marginal", "train_cox", "val_marginal", "lr", "skipped", "seconds"])
@@ -185,6 +186,9 @@ def main() -> None:
         if val < best:
             best = val
             torch.save(ck, run_dir / "best.pt")
+        if tc.time_limit_hours and (time.time() - started) / 3600 > tc.time_limit_hours:
+            print(f"time limit of {tc.time_limit_hours} h reached after epoch {epoch}; stopping")
+            break
     log.close()
     (ROOT / "results").mkdir(exist_ok=True)
     (ROOT / "results" / "training_history.json").write_text(json.dumps({**meta, "history": history}, indent=1))

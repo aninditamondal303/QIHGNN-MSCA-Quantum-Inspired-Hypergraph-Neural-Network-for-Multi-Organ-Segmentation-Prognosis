@@ -107,6 +107,10 @@ def find_checkpoint() -> Optional[Path]:
         for name in ("best.pt", "last.pt"):
             if (run / name).exists():
                 return run / name
+    # Deployments ship one published checkpoint in models/ (see docs/DEPLOY.md).
+    shipped = sorted((ROOT / "models").glob("*.pt"))
+    if shipped:
+        return shipped[0]
     return None
 
 

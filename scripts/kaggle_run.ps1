@@ -1,0 +1,98 @@
+# Run the pipeline on Kaggle from this laptop:
+#   powershell -ExecutionPolicy Bypass -File scripts\kaggle_run.ps1 -Mode probe   # CPU, minutes: check the data loaders
+#   powershell -ExecutionPolicy Bypass -File scripts\kaggle_run.ps1 -Mode train   # GPU, hours: train, evaluate, export
+# Needs Kaggle credentials: %USERPROFILE%\.kaggle\access_token + username (new tokens), or kaggle.json (legacy).
+# Uploads ml/ as a private Kaggle dataset, pushes a private kernel with the three datasets attached,
+# waits for it to finish and downloads its output to kaggle_output\. Progress goes to kaggle.log.
+param([ValidateSet("probe", "train")][string]$Mode = "probe")
+$ErrorActionPreference = "Stop"
+$root = Split-Path $PSScriptRoot -Parent
+Set-Location $root
+$log = Join-Path $root "kaggle.log"
+function Log($m) { $line = "$(Get-Date -Format s) $m"; Write-Host $line; Add-Content -Path $log -Value $line }
+function Run($exe, [string[]]$a) { $o = & cmd /c "`"$exe`" $($a -join ' ') 2>&1"; $o | ForEach-Object { Add-Content -Path $log -Value "    $_" }; return ($o -join "`n") }
+
+$kaggle = Join-Path $root ".venv\Scripts\kaggle.exe"
+if (-not (Test-Path $kaggle)) { throw "Run scripts\setup_windows.ps1 first." }
+$cfgDir = Join-Path $env:USERPROFILE ".kaggle"
+$cfg = Join-Path $cfgDir "kaggle.json"
+$tokenFile = Join-Path $cfgDir "access_token"
+$userFile = Join-Path $cfgDir "username"
+if (-not (Test-Path $cfg) -and -not (Test-Path $tokenFile)) {
+    $dl = Get-ChildItem (Join-Path $env:USERPROFILE "Downloads") -Filter "kaggle*.json" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($dl) { New-Item -ItemType Directory -Force $cfgDir | Out-Null; Copy-Item $dl.FullName $cfg }
+}
+if (Test-Path $cfg) {
+    $user = (Get-Content $cfg -Raw | ConvertFrom-Json).username
+} elseif (Test-Path $tokenFile) {
+    # New-style Kaggle API token (KGAT_...): the CLI reads ~/.kaggle/access_token itself; the username is stored next to it.
+    if (Test-Path $userFile) { $user = (Get-Content $userFile -Raw).Trim() } elseif ($env:KAGGLE_USERNAME) { $user = $env:KAGGLE_USERNAME }
+    if (-not $user) { throw "Found access_token but no username. Save your Kaggle username to $userFile" }
+} else {
+    throw "No Kaggle credentials. Save your API token to $tokenFile (and your username to $userFile), then run this again."
+}
+Log "==== mode=$Mode kaggle user=$user"
+
+# ---------------------------------------------------------------- code dataset
+$build = Join-Path $root "kaggle_build"
+if (Test-Path $build) { Remove-Item $build -Recurse -Force }
+$code = Join-Path $build "code"
+New-Item -ItemType Directory -Force $code | Out-Null
+robocopy (Join-Path $root "ml") (Join-Path $code "ml") /E /XD __pycache__ tests .pytest_cache /NFL /NDL /NJH /NJS /NP | Out-Null
+$dsId = "$user/qihgnn-msca-code"
+@{ title = "qihgnn-msca-code"; id = $dsId; licenses = @(@{ name = "CC0-1.0" }) } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $code "dataset-metadata.json") -Encoding ascii
+$status = Run $kaggle @("datasets", "status", $dsId)
+if ($status -match "ready|pending") {
+    Log "Updating code dataset $dsId"
+    Run $kaggle @("datasets", "version", "-p", "`"$code`"", "-m", "`"update $(Get-Date -Format s)`"", "--dir-mode", "zip") | Out-Null
+} else {
+    Log "Creating private code dataset $dsId"
+    Run $kaggle @("datasets", "create", "-p", "`"$code`"", "--dir-mode", "zip") | Out-Null
+}
+for ($i = 0; $i -lt 40; $i++) {
+    Start-Sleep -Seconds 15
+    $s = Run $kaggle @("datasets", "status", $dsId)
+    if ($s -match "ready") { break }
+}
+Log "Code dataset status: $s"
+Start-Sleep -Seconds 20   # let the new version propagate before the kernel mounts it
+
+# ---------------------------------------------------------------- kernel
+$kern = Join-Path $build "kernel"
+New-Item -ItemType Directory -Force $kern | Out-Null
+(Get-Content (Join-Path $root "kaggle\run.py") -Raw).Replace("__MODE__", $Mode) | Set-Content (Join-Path $kern "run.py") -Encoding ascii
+$kid = "$user/qihgnn-msca-train"
+@{
+    id                  = $kid
+    title               = "qihgnn-msca-train"
+    code_file           = "run.py"
+    language            = "python"
+    kernel_type         = "script"
+    is_private          = $true
+    enable_gpu          = ($Mode -eq "train")
+    enable_internet     = $true
+    dataset_sources     = @($dsId, "awsaf49/brats2020-training-data", "harshwardhanbhangale/lits-dataset", "balajikartheek/cervical-cancer-segmentation")
+    competition_sources = @()
+    kernel_sources      = @()
+} | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $kern "kernel-metadata.json") -Encoding ascii
+Log "Pushing kernel $kid (gpu=$($Mode -eq 'train'))"
+$push = Run $kaggle @("kernels", "push", "-p", "`"$kern`"")
+Log $push
+if ($push -match "error|Error|403|401") { throw "kernel push failed: $push" }
+
+# ---------------------------------------------------------------- wait
+$deadline = (Get-Date).AddHours(12.5)
+do {
+    Start-Sleep -Seconds 60
+    $s = Run $kaggle @("kernels", "status", $kid)
+    Log "status: $($s.Trim())"
+} until ($s -match "complete|error|cancel" -or (Get-Date) -gt $deadline)
+
+# ---------------------------------------------------------------- output
+$outDir = Join-Path $root "kaggle_output\$Mode"
+if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
+New-Item -ItemType Directory -Force $outDir | Out-Null
+Run $kaggle @("kernels", "output", $kid, "-p", "`"$outDir`"") | Out-Null
+Log "Output downloaded to $outDir"
+Get-ChildItem $outDir -Recurse | Select-Object -First 40 | ForEach-Object { Log "  $($_.FullName.Substring($outDir.Length))" }
+if ($s -match "complete") { Log "==== DONE ($Mode)" } else { Log "==== FAILED ($Mode): see the .log file in $outDir" }

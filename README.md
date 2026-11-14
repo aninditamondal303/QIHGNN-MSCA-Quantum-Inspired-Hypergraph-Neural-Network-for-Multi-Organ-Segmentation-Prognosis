@@ -168,6 +168,13 @@ docs/               decisions log, model card, screenshots
 results/            verification.json (committed); metrics.json after evaluation
 ```
 
+## Deploy
+
+- **Static site on GitHub Pages:** push to `main`; `.github/workflows/pages.yml` publishes `web/` (repository must be public on a free plan).
+- **Website + API in one container:** `docker build -t qihgnn-msca . && docker run -p 7860:7860 qihgnn-msca`. The same `Dockerfile` runs on Hugging Face Spaces, Render, Railway and Fly.io.
+
+Step-by-step instructions: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## Further reading
 
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): every place this implementation chooses something the report leaves open, and why.
