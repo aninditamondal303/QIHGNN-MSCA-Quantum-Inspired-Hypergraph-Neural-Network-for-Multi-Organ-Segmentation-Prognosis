@@ -11,7 +11,7 @@ const DATASETS = [
   { name: 'BraTS 2020', role: 'Outline, volume, prognosis; glioma slices for the tumour check', what: '369 pre-operative glioma MRI scans in four sequences with expert tumour segmentations; survival data for 236 patients.', href: 'https://www.kaggle.com/datasets/awsaf49/brats2020-training-data' },
   { name: 'Brain tumour segmentation (2D)', role: 'Outline on skull-on images', what: 'About 3,000 contrast-enhanced T1 slices with tumour masks.', href: 'https://www.kaggle.com/datasets/nikhilroxtomar/brain-tumor-segmentation' },
   { name: 'LiTS (2D slices)', role: 'Liver and liver-tumour outline; “not a brain MRI” examples; liver channel of the research model', what: '131 abdominal CT scans as slices, with liver and tumour labelled separately.', href: 'https://www.kaggle.com/datasets/harshwardhanbhangale/lits-dataset' },
-  { name: 'Cervical cytology (Pap smear)', role: 'Cell and nucleus outline, N:C ratio; “not a brain MRI” examples', what: '686 Papanicolaou-stained microscope images with about 34,000 cells and their nuclei outlined. No diagnosis labels.', href: 'https://www.kaggle.com/datasets/balajikartheek/cervical-cancer-segmentation' },
+  { name: 'Cervical cytology', role: 'Cell and nucleus outline, N:C ratio; “not a brain MRI” examples', what: '686 stained microscope images with about 34,000 cells and their nuclei outlined. No diagnosis labels.', href: 'https://www.kaggle.com/datasets/balajikartheek/cervical-cancer-segmentation' },
 ];
 
 export function DataPrivacy({ corpus }: { corpus: CorpusFile | null }) {

@@ -1,4 +1,4 @@
-"""Liver tumour segmentation (CT) and cervical cytology analysis (Pap smear), trained, evaluated and exported.
+"""Liver tumour segmentation (CT) and cervical cell analysis (microscope images), trained, evaluated and exported.
 
   python -m qihgnn.screen.organs --lits <dir> --cervix <dir> --out <dir> [--probe]
 
@@ -457,9 +457,9 @@ def main() -> None:
         samples.append({"file": f"liver_ct_volume_{v}.nii.gz", "truth": "liver_tumour", "kind": "liver-volume",
                         "source": "LiTS (test patient of this project); voxel size not stored in this mirror"})
     for rgb, _cls, _ratios, it in cs["test"][:4]:
-        name = f"pap_{it['png'].stem}.jpg"
+        name = f"cervical_cells_{it['png'].stem}.jpg"
         Image.fromarray(rgb).save(out / "samples" / name, quality=92)
-        samples.append({"file": name, "truth": "pap_smear", "kind": "cervix", "source": "Cervical cytology (test slide of this project)",
+        samples.append({"file": name, "truth": "cervical_cells", "kind": "cervix", "source": "Cervical cytology (test slide of this project)",
                         "nuclei_annotated": sum(1 for lab, _ in it["shapes"] if lab == "kernel")})
     write_json(out / "samples" / "organs_index.json", samples)
     M["minutes"] = round((time.time() - T0) / 60, 1)

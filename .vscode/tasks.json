@@ -206,7 +206,7 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Publish the Pap smear cytology model with measured results; liver tumour stage on cleaned labels and original CT scans' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Rename the cytology tool to Cervical cell analysis; it measures cells and does not perform a screening test' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {

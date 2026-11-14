@@ -48,7 +48,7 @@ type Mode = 'brain' | 'liver' | 'cervix';
 const MODES: Record<Mode, { tab: string; sub: string; title: string; lead: string }> = {
   brain: { tab: 'Brain MRI', sub: 'tumour check, outline, prognosis', title: 'Upload a brain MRI.', lead: 'Get a tumour check, an outline with its size, and a survival estimate. The models run inside this browser tab, so the scan is never uploaded anywhere.' },
   liver: { tab: 'Liver CT', sub: 'liver and tumour outline, burden', title: 'Upload a liver CT.', lead: 'Outline the liver and any tumours on a CT slice, or on a whole CT scan get liver and tumour volume, tumour burden and the number of lesions. Computed in this browser tab.' },
-  cervix: { tab: 'Pap smear', sub: 'cells, nuclei, N:C ratio', title: 'Upload a Pap smear image.', lead: 'Outline every cell and nucleus in a cervical cytology image, count them, and measure each cell’s nucleus-to-cytoplasm ratio, flagging unusual cells for review. Computed in this browser tab.' },
+  cervix: { tab: 'Cervical cells', sub: 'cells, nuclei, N:C ratio', title: 'Upload a cervical cell image.', lead: 'Outline every cell and nucleus in a microscope image of cervical cells, count them, and measure each cell’s nucleus-to-cytoplasm ratio, flagging unusual cells for review. Computed in this browser tab.' },
 };
 
 function ModeTabs({ mode, onPick }: { mode: Mode; onPick: (m: Mode) => void }) {

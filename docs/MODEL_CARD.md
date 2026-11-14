@@ -8,11 +8,11 @@ Author: Anindita Mondal.
 
 | Model | Task | Architecture | Training data | Held-out result |
 |---|---|---|---|---|
-| Brain classifier | No tumour, glioma, meningioma, pituitary tumour, not a brain MRI | EfficientNet-B0, ImageNet-initialised, 4.0 M parameters, temperature 0.79 | Brain Tumor MRI Dataset, BraTS 2020 slices, abdominal CT, Pap smear images, synthetic images; split by near-duplicate cluster or patient | accuracy 97.4%, tumour sensitivity 98.4%, specificity 98.8%, ECE 1.2%; outside data: sensitivity 75.9%, AUC 0.986 |
+| Brain classifier | No tumour, glioma, meningioma, pituitary tumour, not a brain MRI | EfficientNet-B0, ImageNet-initialised, 4.0 M parameters, temperature 0.79 | Brain Tumor MRI Dataset, BraTS 2020 slices, abdominal CT, cervical cell images, synthetic images; split by near-duplicate cluster or patient | accuracy 97.4%, tumour sensitivity 98.4%, specificity 98.8%, ECE 1.2%; outside data: sensitivity 75.9%, AUC 0.986 |
 | Brain segmenter | Whole tumour (tumour core and oedema) on one grey slice | 2D U-Net, 1.9 M parameters | BraTS 2020 (all four sequences, patient split) and skull-on contrast T1 slices | 3D Dice 0.749 (T2), volume error median 8.9 cm³ |
 | Prognosis | Survival curve for glioma | Ridge Cox model on age, log tumour volume, extent of resection; 200 bootstrap refits | BraTS 2020 survival data, 236 patients | C-index 0.634 (age alone 0.621) |
 | Liver segmenter | Background, liver, tumour on a CT slice | Two stages: 2D U-Net for the liver (3 classes), second U-Net on a crop around the liver for tumours | LiTS (131 patients, patient split, 25 test patients); JPEG mask specks removed | liver whole-scan Dice 0.93; tumour figures in `organs_metrics.json` once the second stage is published |
-| Cytology segmenter | Background, cytoplasm, nucleus on a Pap smear image | 2D U-Net, 3 classes, RGB, 1.9 M parameters | Cervical cytology, 686 images with cell and nucleus outlines, slide split (100 test images) | nucleus Dice 0.751, cell Dice 0.877; nuclei count median error 5 (r 0.904); median N:C error 0.004 (r 0.928) |
+| Cytology segmenter | Background, cytoplasm, nucleus on a microscope image of cervical cells | 2D U-Net, 3 classes, RGB, 1.9 M parameters | Cervical cytology, 686 images with cell and nucleus outlines, slide split (100 test images) | nucleus Dice 0.751, cell Dice 0.877; nuclei count median error 5 (r 0.904); median N:C error 0.004 (r 0.928) |
 
 ### Intended use
 
@@ -30,7 +30,7 @@ Diagnosis, screening of real patients, treatment planning, or any decision about
 - The brain outline covers the whole tumour region including oedema and does not separate sub-regions.
 - The prognosis model ranks risk modestly better than age alone and ignores treatment, molecular markers (such as IDH and MGMT) and performance status. Its survival-class accuracy equals the majority-class baseline.
 - Liver training images were already windowed for display and carry no voxel size; Hounsfield-unit uploads are windowed at -160 to 240 HU.
-- The cytology data has no diagnosis labels: the tool measures nucleus-to-cytoplasm ratios and flags outliers, and does not grade a smear.
+- The cytology data has no diagnosis labels: the tool measures nucleus-to-cytoplasm ratios and flags outliers, and does not grade the cells.
 
 ### Evaluation design
 

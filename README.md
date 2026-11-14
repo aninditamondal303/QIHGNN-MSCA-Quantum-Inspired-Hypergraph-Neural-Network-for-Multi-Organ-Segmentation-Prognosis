@@ -180,7 +180,7 @@ All figures are on held-out data: patients (BraTS), CT volumes, slides, or near-
 
 Out-of-fold risk thirds separate clearly (log-rank p = 1.7e-06), but assigning BraTS survival classes is no better than the majority class (37.9% vs 37.9%). The tool therefore reports a risk ranking and a survival curve with its bootstrap band, not a predicted survival class.
 
-### Pap smear cytology (686 images from 524 slides, 100 held-out images from unseen slides)
+### Cervical cell analysis (686 images from 524 slides, 100 held-out images from unseen slides)
 
 | Measure | Value |
 |---|---|
@@ -189,7 +189,7 @@ Out-of-fold risk thirds separate clearly (log-rank p = 1.7e-06), but assigning B
 | Nuclei per image, error against the expert count | median 5 (mean 7.0), r = 0.904 |
 | Median nucleus-to-cytoplasm ratio per image, error | median 0.004, r = 0.928 |
 
-The data has cell and nucleus outlines but no diagnosis labels, so the tool measures; it does not grade a smear. Cells whose N:C ratio is above the 99th percentile of the training slides (0.24) are flagged for a cytologist to look at.
+The data has cell and nucleus outlines but no diagnosis labels, so the tool measures; it does not grade the cells. Cells whose N:C ratio is above the 99th percentile of the training slides (0.24) are flagged for a cytologist to look at.
 
 ### Liver CT
 

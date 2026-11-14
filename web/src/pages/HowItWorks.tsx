@@ -23,7 +23,7 @@ export function HowItWorks({ cases, api, verification }: { cases: CasesFile | nu
   return (
     <>
       <PageHead eyebrow="How it works" title="From pixels to a prognosis.">
-        Six steps run in your browser when you analyse a brain scan; liver CT and Pap smear images follow the same pattern with their own
+        Six steps run in your browser when you analyse a brain scan; liver CT and cervical cell images follow the same pattern with their own
         models. Below them is the research model the project began with: one 3D network that learns from datasets that each label a single
         organ.
       </PageHead>
@@ -42,10 +42,10 @@ export function HowItWorks({ cases, api, verification }: { cases: CasesFile | nu
           <div className="mt-px grid gap-px bg-rule md:grid-cols-2">
             <div className="bg-surface p-6">
               <h3 className="display text-h3">Liver CT</h3>
-              <p className="mt-3 text-small">A 2D U-Net labels every pixel as background, liver or tumour. On a whole CT scan, slices are labelled one by one, voxels are summed with the scan’s own voxel size, and separate lesions are counted as connected regions across slices. A patient is called tumour-positive when tumour burden exceeds the level chosen on validation patients.</p>
+              <p className="mt-3 text-small">Two networks in sequence. The first finds the liver on each slice; the second looks only at a square around the liver, at higher zoom, and outlines tumours. On a whole CT scan, voxels are summed with the scan’s own voxel size, and separate lesions are counted as connected regions across slices.</p>
             </div>
             <div className="bg-surface p-6">
-              <h3 className="display text-h3">Pap smear</h3>
+              <h3 className="display text-h3">Cervical cells</h3>
               <p className="mt-3 text-small">A 2D U-Net on the colour image labels background, cytoplasm and nucleus. Touching cells are separated by growing each nucleus outwards through its cell, so every cell gets its own nucleus-to-cytoplasm ratio. The same algorithm runs in Python for evaluation and in the browser, and a test checks they agree pixel for pixel.</p>
             </div>
           </div>

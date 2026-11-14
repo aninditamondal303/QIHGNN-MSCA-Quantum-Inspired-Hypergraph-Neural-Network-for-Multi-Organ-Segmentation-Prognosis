@@ -234,7 +234,7 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
         )}
 
         {cx && (
-          <Block id="cytology" title="Pap smear cytology" lead={`${cx.architecture}. ${organs.metrics!.cervix_data?.images} images from ${organs.metrics!.cervix_data?.slide_groups} slides, split per slide; ${cx.test_images} images held out.`}>
+          <Block id="cytology" title="Cervical cell analysis" lead={`${cx.architecture}. ${organs.metrics!.cervix_data?.images} images from ${organs.metrics!.cervix_data?.slide_groups} slides, split per slide; ${cx.test_images} images held out.`}>
             <div className="grid gap-px bg-rule sm:grid-cols-2 lg:grid-cols-4">
               <Card k="Nucleus Dice" v={cx.dice_nucleus.mean?.toFixed(3) ?? '—'} />
               <Card k="Cell Dice" v={cx.dice_cell.mean?.toFixed(3) ?? '—'} />

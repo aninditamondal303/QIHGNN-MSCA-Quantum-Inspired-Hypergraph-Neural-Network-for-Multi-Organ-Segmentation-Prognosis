@@ -306,7 +306,7 @@ export function CervixTool() {
       {!ready && !loading && <NotReady what="cytology" />}
       <div className="grid grid-cols-12 gap-x-6 gap-y-10">
         <div className="col-span-12 lg:col-span-7">
-          {res ? <CervixViewer res={res} threshold={metrics?.cervix?.unusual_nc_threshold ?? null} /> : <Dropzone onFile={run} disabled={!!busy || !ready} accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff" hint="A microscope image of a Papanicolaou-stained cervical smear (JPG or PNG), ideally at around 10x to 20x magnification." />}
+          {res ? <CervixViewer res={res} threshold={metrics?.cervix?.unusual_nc_threshold ?? null} /> : <Dropzone onFile={run} disabled={!!busy || !ready} accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff" hint="A stained microscope image of cervical cells (JPG or PNG), ideally at around 10x to 20x magnification." />}
           {busy && <Busy text={busy} />}
           {error && <p className="mt-4 border-l-2 border-vermilion pl-3 text-small" role="alert">Could not analyse this file: {error}</p>}
           {res && <Actions onReset={() => setRes(null)} />}
@@ -322,7 +322,7 @@ export function CervixTool() {
                 <li><span className="font-medium">N:C ratio.</span> Nucleus-to-cytoplasm area ratio for each cell. Abnormal (dysplastic) cells typically have enlarged nuclei and a high ratio.</li>
                 <li><span className="font-medium">Cells to review.</span> Cells whose ratio is higher than 99% of the cells in the training slides are ringed.</li>
               </ul>
-              <p className="mt-6 text-small text-muted">The training data outlines cells but carries no diagnosis, so this tool measures; it does not classify a smear as normal or abnormal.</p>
+              <p className="mt-6 text-small text-muted">The training data outlines cells but carries no diagnosis, so this tool measures; it does not classify the cells as normal or abnormal.</p>
               <Disclaimer />
             </div>
           )}

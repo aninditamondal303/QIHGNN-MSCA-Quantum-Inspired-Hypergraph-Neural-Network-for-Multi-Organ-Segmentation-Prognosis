@@ -187,7 +187,7 @@ export const SOURCE_NAMES: Record<string, string> = {
   'brain-mri-4class': 'Brain MRI dataset',
   'brats-slices': 'BraTS slices',
   'abdominal-ct': 'Abdominal CT',
-  'colposcopy-photo': 'Pap smear images',
-  'cervical-cytology': 'Pap smear images',
+  'colposcopy-photo': 'Cervical cell images',
+  'cervical-cytology': 'Cervical cell images',
   synthetic: 'Synthetic non-medical',
 };

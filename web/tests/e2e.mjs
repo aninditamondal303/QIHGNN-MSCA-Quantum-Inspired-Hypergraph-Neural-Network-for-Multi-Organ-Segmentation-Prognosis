@@ -111,11 +111,11 @@ try {
     assert.ok(await page.getByText('Calibrated probabilities').isVisible());
   });
 
-  await step('pap smear: a held-out slide is measured in the browser when the model is published', async () => {
+  await step('cervical cells: a held-out slide is measured in the browser when the model is published', async () => {
     await page.goto(URL + 'analyse?type=cervix', { waitUntil: 'networkidle' });
     const published = await page.evaluate(async () => (await fetch('screen/cervix.onnx', { method: 'HEAD' })).ok);
     if (!published) return;
-    await page.getByRole('button', { name: /pap smear/i }).first().click();
+    await page.locator('section', { hasText: 'held-out test image' }).getByRole('button').first().click();
     const h = page.getByText(/\d+ cells measured/).first();
     await h.waitFor({ timeout: 90000 });
     const n = Number((await h.textContent()).match(/\d+/)[0]);

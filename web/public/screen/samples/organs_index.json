@@ -1,28 +1,28 @@
 [
  {
-  "file": "pap_00006.jpg",
-  "truth": "pap_smear",
+  "file": "cervical_cells_00006.jpg",
+  "truth": "cervical_cells",
   "kind": "cervix",
   "source": "Cervical cytology (test slide of this project)",
   "nuclei_annotated": 60
  },
  {
-  "file": "pap_00032.jpg",
-  "truth": "pap_smear",
+  "file": "cervical_cells_00032.jpg",
+  "truth": "cervical_cells",
   "kind": "cervix",
   "source": "Cervical cytology (test slide of this project)",
   "nuclei_annotated": 76
  },
  {
-  "file": "pap_00034.jpg",
-  "truth": "pap_smear",
+  "file": "cervical_cells_00034.jpg",
+  "truth": "cervical_cells",
   "kind": "cervix",
   "source": "Cervical cytology (test slide of this project)",
   "nuclei_annotated": 26
  },
  {
-  "file": "pap_00036.jpg",
-  "truth": "pap_smear",
+  "file": "cervical_cells_00036.jpg",
+  "truth": "cervical_cells",
   "kind": "cervix",
   "source": "Cervical cytology (test slide of this project)",
   "nuclei_annotated": 27
