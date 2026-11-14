@@ -24,6 +24,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.exceptions import HTTPException
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
@@ -249,9 +250,25 @@ routes = [
     Route("/api/metrics", metrics),
     Route("/api/predict", predict, methods=["POST"]),
 ]
+class SPAStaticFiles(StaticFiles):
+    """Serve the built site; extensionless unknown paths (/analyse, /accuracy ...) are app routes -> index.html."""
+
+    async def get_response(self, path, scope):
+        is_route = "." not in path.rsplit("/", 1)[-1]
+        try:
+            resp = await super().get_response(path, scope)
+        except HTTPException as exc:
+            if exc.status_code != 404 or not is_route:
+                raise
+            return await super().get_response("index.html", scope)
+        if resp.status_code == 404 and is_route:
+            return await super().get_response("index.html", scope)
+        return resp
+
+
 dist = ROOT / "web" / "dist"
 if dist.exists():
-    routes.append(Mount("/", app=StaticFiles(directory=dist, html=True), name="web"))
+    routes.append(Mount("/", app=SPAStaticFiles(directory=dist, html=True), name="web"))
 
 app = Starlette(
     routes=routes,

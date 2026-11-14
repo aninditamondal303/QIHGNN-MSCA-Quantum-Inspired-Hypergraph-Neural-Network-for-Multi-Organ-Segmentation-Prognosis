@@ -1,16 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuMenu, LuMoon, LuSun, LuX } from 'react-icons/lu';
+import { LuArrowRight, LuMenu, LuMoon, LuSun, LuX } from 'react-icons/lu';
+import { Link, ROUTES } from '../lib/router';
 import type { ApiState } from '../lib/data';
-
-export const SECTIONS = [
-  { id: 'problem', n: '01', name: 'Problem' },
-  { id: 'architecture', n: '02', name: 'Architecture' },
-  { id: 'workbench', n: '03', name: 'Workbench' },
-  { id: 'verification', n: '04', name: 'Verification' },
-  { id: 'corpus', n: '05', name: 'Corpus' },
-  { id: 'results', n: '06', name: 'Results' },
-  { id: 'literature', n: '07', name: 'Literature' },
-] as const;
 
 export function Container({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`mx-auto w-full max-w-[1560px] px-4 sm:px-6 lg:px-10 ${className}`}>{children}</div>;
@@ -44,23 +35,6 @@ function useTheme(): [string, () => void] {
   return [theme, toggle];
 }
 
-function useActiveSection(): string | null {
-  const [active, setActive] = useState<string | null>(null);
-  useEffect(() => {
-    const els = SECTIONS.map((s) => document.getElementById(s.id)).filter((e): e is HTMLElement => !!e);
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: '-20% 0px -70% 0px' },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, []);
-  return active;
-}
-
 export function StatusDot({ api }: { api: ApiState }) {
   if (!api.checked) return <span className="meta text-muted">Checking API</span>;
   if (api.online) {
@@ -82,55 +56,59 @@ export function StatusDot({ api }: { api: ApiState }) {
   );
 }
 
-export function Header({ api, version, onOpenCard }: { api: ApiState; version: string; onOpenCard: () => void }) {
+const NAV = ROUTES.filter((r) => r.path !== '/' && r.path !== '/analyse');
+
+export function Header({ api, path }: { api: ApiState; path: string }) {
   const [theme, toggle] = useTheme();
-  const active = useActiveSection();
   const [menu, setMenu] = useState(false);
+  useEffect(() => setMenu(false), [path]);
   return (
     <header className="sticky top-0 z-40 border-b border-rule bg-surface/95 backdrop-blur-[2px]">
-      <Container className="flex h-14 items-center gap-4">
-        <a href="#top" className="flex items-center gap-2.5 no-underline" aria-label="QIHGNN-MSCA, back to top">
-          <Mark className="size-6" />
-          <span className="display text-[1.05rem] tracking-[-0.02em]">QIHGNN-MSCA</span>
-        </a>
-        <span className="meta hidden text-muted sm:inline">v{version}</span>
-        <span className="hidden md:inline-flex">
+      <Container className="flex h-16 items-center gap-4">
+        <Link to="/" className="flex items-center gap-2.5 no-underline" aria-label="QIHGNN-MSCA home">
+          <Mark className="size-7" />
+          <span className="display text-[1.1rem] tracking-[-0.02em]">QIHGNN-MSCA</span>
+        </Link>
+        <span className="hidden lg:inline-flex">
           <StatusDot api={api} />
         </span>
-        <nav aria-label="Sections" className="ml-auto hidden xl:block">
-          <ul className="flex items-center">
-            {SECTIONS.map((s) => (
-              <li key={s.id}>
-                <a
-                  href={`#${s.id}`}
-                  aria-current={active === s.id ? 'true' : undefined}
-                  className={`group flex items-baseline gap-1.5 px-2.5 py-1 text-small no-underline transition-colors ${active === s.id ? 'text-fg' : 'text-muted hover:text-fg'}`}
+        <nav aria-label="Main" className="ml-auto hidden lg:block">
+          <ul className="flex items-center gap-1">
+            {NAV.map((r) => (
+              <li key={r.path}>
+                <Link
+                  to={r.path}
+                  aria-current={path === r.path ? 'page' : undefined}
+                  className={`px-3 py-2 text-small no-underline transition-colors ${path === r.path ? 'text-fg underline decoration-cobalt decoration-2 underline-offset-[7px]' : 'text-muted hover:text-fg'}`}
                 >
-                  <span className={`font-mono text-[0.68rem] ${active === s.id ? 'text-cobalt' : ''}`}>{s.n}</span>
-                  <span className={active === s.id ? 'underline decoration-cobalt decoration-2 underline-offset-[6px]' : ''}>{s.name}</span>
-                </a>
+                  {r.name}
+                </Link>
               </li>
             ))}
           </ul>
         </nav>
-        <div className="ml-auto flex items-center gap-1 xl:ml-4">
+        <div className="ml-auto flex items-center gap-1 lg:ml-2">
           <button
             type="button"
             onClick={toggle}
-            className="grid size-9 place-items-center text-fg hover:bg-raised"
+            className="grid size-10 place-items-center text-fg hover:bg-raised"
             aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
             {theme === 'dark' ? <LuSun className="size-[18px]" /> : <LuMoon className="size-[18px]" />}
           </button>
-          <button type="button" onClick={onOpenCard} className="hidden h-9 border border-rule-strong px-3 text-small hover:bg-fg hover:text-surface sm:block">
-            Model card
-          </button>
+          <Link
+            to="/analyse"
+            aria-current={path === '/analyse' ? 'page' : undefined}
+            className="hidden h-10 items-center gap-2 bg-fg px-4 text-small font-medium text-surface no-underline hover:bg-cobalt sm:inline-flex"
+          >
+            Analyse a scan <LuArrowRight className="size-4" aria-hidden="true" />
+          </Link>
           <button
             type="button"
-            className="grid size-9 place-items-center xl:hidden"
+            className="grid size-10 place-items-center lg:hidden"
             aria-expanded={menu}
             aria-controls="mobile-nav"
-            aria-label={menu ? 'Close contents' : 'Open contents'}
+            aria-label={menu ? 'Close menu' : 'Open menu'}
             onClick={() => setMenu((m) => !m)}
           >
             {menu ? <LuX className="size-5" /> : <LuMenu className="size-5" />}
@@ -138,22 +116,32 @@ export function Header({ api, version, onOpenCard }: { api: ApiState; version: s
         </div>
       </Container>
       {menu && (
-        <nav id="mobile-nav" aria-label="Sections" className="border-t border-rule bg-surface xl:hidden">
+        <nav id="mobile-nav" aria-label="Main" className="border-t border-rule bg-surface lg:hidden">
           <Container className="grid grid-cols-1 py-2 sm:grid-cols-2">
-            {SECTIONS.map((s) => (
-              <a key={s.id} href={`#${s.id}`} onClick={() => setMenu(false)} className="flex items-baseline gap-3 border-b border-rule py-3 no-underline">
-                <span className="font-mono text-meta text-muted">{s.n}</span>
-                <span className="display text-lead">{s.name}</span>
-              </a>
+            {ROUTES.map((r) => (
+              <Link key={r.path} to={r.path} aria-current={path === r.path ? 'page' : undefined} className="flex items-center justify-between border-b border-rule py-3.5 no-underline">
+                <span className={`display text-lead ${path === r.path ? 'text-cobalt' : ''}`}>{r.name}</span>
+                <LuArrowRight className="size-4 text-muted" aria-hidden="true" />
+              </Link>
             ))}
-            <button type="button" onClick={() => { setMenu(false); onOpenCard(); }} className="flex items-baseline gap-3 py-3 text-left sm:hidden">
-              <span className="font-mono text-meta text-muted">—</span>
-              <span className="display text-lead">Model card</span>
-            </button>
+            <div className="py-3 sm:col-span-2"><StatusDot api={api} /></div>
           </Container>
         </nav>
       )}
     </header>
+  );
+}
+
+/** Page opener used by every inner page: eyebrow, large title, standfirst. */
+export function PageHead({ eyebrow, title, children }: { eyebrow: string; title: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="pb-10 pt-12 md:pb-14 md:pt-20">
+      <Container>
+        <p className="meta mb-5 text-muted">{eyebrow}</p>
+        <h1 className="display max-w-[16ch] text-h2">{title}</h1>
+        {children && <div className="mt-6 max-w-[62ch] text-lead font-light">{children}</div>}
+      </Container>
+    </div>
   );
 }
 

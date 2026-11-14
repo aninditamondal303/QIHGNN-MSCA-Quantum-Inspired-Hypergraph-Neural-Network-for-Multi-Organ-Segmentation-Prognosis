@@ -13,6 +13,18 @@
   },
   "tasks": [
     {
+      "label": "Kaggle: screening models - train (GPU, about 2 h)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode train -Job screen",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: screening models - probe (CPU, minutes)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode probe -Job screen",
+      "problemMatcher": []
+    },
+    {
       "label": "Windows: one-time setup",
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File scripts\\setup_windows.ps1",
@@ -158,7 +170,7 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Speed up Kaggle data preparation and add GitHub Pages publishing task' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Multi-page site with in-browser tumour detection, outlining and prognosis; screening models pipeline; duplicate-aware evaluation' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {
@@ -171,6 +183,12 @@
       "label": "GitHub: publish website on GitHub Pages",
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File scripts\\github_pages.ps1",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kaggle: show GPU quota",
+      "type": "shell",
+      "command": "& \"${workspaceFolder}\\.venv\\Scripts\\python.exe\" -m kaggle quota 2>&1 | Tee-Object -FilePath kaggle_quota.log",
       "problemMatcher": []
     },
     {

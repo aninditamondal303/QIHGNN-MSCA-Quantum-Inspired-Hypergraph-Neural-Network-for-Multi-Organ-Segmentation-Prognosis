@@ -1,15 +1,23 @@
 # QIHGNN-MSCA
 
-**Quantum-inspired hypergraph neural network with multi-scale cross-attention for partially supervised multi-organ segmentation and prognosis.**
+**Brain tumour detection, outlining and prognosis that runs privately in the browser, built on a research model for partially supervised multi-organ segmentation.**
 
-One 3D network that outlines organs in CT and MRI and estimates survival risk from a single shared encoding. It trains on public datasets that each label only one organ, without being taught that every unlabelled organ is background. The repository contains the model, a fully tested numerical verification of every property the project report claims, a data pipeline for the three Kaggle datasets, an HTTP API, and an editorial research website with an interactive scan workbench.
+Upload a brain MRI and get:
 
-![Hero, light theme](docs/images/hero-light.png)
+- **a tumour check**: no tumour, glioma, meningioma, pituitary tumour, or "not a brain MRI", with calibrated confidence and abstention when unsure;
+- **an outline**: the tumour drawn on the scan, and its volume in cm³ for a 3D NIfTI scan;
+- **an explanation**: a class-activation heat map of the evidence;
+- **a prognosis**: a survival curve for glioma from age, tumour volume and extent of surgery, with a bootstrap uncertainty band.
 
-> Research prototype. Not a medical device and not for clinical use. The scans shown on the website are synthetic phantoms generated in code.
+The models run in the visitor's browser through ONNX Runtime Web, so scans are never uploaded. Every figure on the site is measured on held-out patients, on duplicate-free splits, and on an independent dataset.
 
-B.Tech project, Department of Computational Intelligence, SRM Institute of Science and Technology.
-Satakshi Srivastava, Anindita Mondal and Aayushman Ghatak, guided by Dr G Tamilmani.
+**Live site:** https://aninditamondal303.github.io/QIHGNN-MSCA-Quantum-Inspired-Hypergraph-Neural-Network-for-Multi-Organ-Segmentation-Prognosis/
+
+![Home page](docs/images/hero-light.png)
+
+> Research and education only. Not a medical device and not for diagnosis or treatment.
+
+A project by Anindita Mondal.
 
 ---
 
@@ -17,14 +25,16 @@ Satakshi Srivastava, Anindita Mondal and Aayushman Ghatak, guided by Dr G Tamilm
 
 | Part | What it does | Where |
 |---|---|---|
-| Model | 8-stage PyTorch network, 8,347,071 parameters, equal to the report stage by stage | `ml/qihgnn/model/` |
+| Screening models | EfficientNet-B0 classifier (5 classes, temperature-calibrated, CAM), 2D U-Net tumour segmenter, Cox survival model with 200 bootstrap refits | `ml/qihgnn/screen/` |
+| Honest evaluation | Flip/rotation-invariant near-duplicate clustering, group-level splits, external test set, Wilson intervals, calibration error, abstention coverage | `ml/qihgnn/screen/common.py`, `train.py` |
+| In-browser inference | ONNX export with PyTorch parity check; preprocessing, NIfTI reader and survival maths in TypeScript, unit-tested against the Python outputs | `web/src/lib/screen.ts`, `web/tests/screen.test.ts` |
+| Research model | 8-stage 3D PyTorch network, 8,347,071 parameters, equal to the project report stage by stage | `ml/qihgnn/model/` |
 | Objective | Marginal + exclusion + Cox partial likelihood + discrete-horizon loss under learned uncertainty weighting | `ml/qihgnn/losses.py` |
 | Verification | Pure-NumPy reproduction of every claimed property, written to `results/verification.json` | `ml/qihgnn/verify.py`, `ml/qihgnn/reference.py` |
 | Data | Inspection before assumption, admission rules, preprocessing, patient-level splits, survival parsing | `ml/qihgnn/data/` |
-| Training | AdamW, warmup + cosine, AMP, gradient accumulation, event-aware sampler, resumable checkpoints | `ml/qihgnn/train.py` |
-| Evaluation | Per-organ Dice and HD95, C-index, time-dependent AUC, matched baseline and three ablations | `ml/qihgnn/evaluate.py` |
-| API | Starlette + pydantic, inference with unsupervised-channel suppression | `api/app.py` |
-| Website | React + TypeScript + Tailwind v4, esbuild, KaTeX, canvas volume viewer | `web/` |
+| Training | Kaggle GPU kernels driven from VS Code tasks (`scripts/kaggle_run.ps1`), resumable, time-budgeted | `kaggle/`, `ml/qihgnn/train.py` |
+| API | Starlette + pydantic: research-model inference and the built site | `api/app.py` |
+| Website | Multi-page React + TypeScript + Tailwind v4 site: Home, Analyse, How it works, Accuracy, Data & privacy, About | `web/` |
 
 ## The idea in one picture
 
@@ -149,8 +159,8 @@ The site is built as an editorial research archive, not a landing page.
 - **Motion:** one moment only, the hero slice developing like film on first load. Everything else moves only in response to input, and `prefers-reduced-motion` is respected.
 - **Honesty in the interface:** results that do not exist are shown as designed empty states with the command that produces them.
 
-![Workbench, dark theme](docs/images/workbench-dark.png)
-![Verification lab](docs/images/lab-light.png)
+![Research model workbench, dark theme](docs/images/workbench-dark.png)
+![Analyse a scan](docs/images/lab-light.png)
 
 ## Repository layout
 

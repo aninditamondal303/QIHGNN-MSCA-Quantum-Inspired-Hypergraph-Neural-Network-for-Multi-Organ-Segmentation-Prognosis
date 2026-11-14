@@ -162,7 +162,7 @@ print("GPU check OK:", torch.cuda.get_device_name(0), round(torch.cuda.max_memor
 open(f"{ML}/_gpu_check.py", "w").write(GPU_CHECK)
 sh(f"{sys.executable} _gpu_check.py", cwd=ML)
 
-sh(f"{sys.executable} -m qihgnn.data.cache", cwd=ML)
+sh(f"{sys.executable} -m qihgnn.data.cache --workers 8", cwd=ML)  # I/O-bound: more cases in flight than CPUs
 shutil.copy(f"{REPO}/data/cache/index.json", f"{OUT}/cache_index.json")
 sh(f"{sys.executable} -m qihgnn.verify", cwd=ML)
 

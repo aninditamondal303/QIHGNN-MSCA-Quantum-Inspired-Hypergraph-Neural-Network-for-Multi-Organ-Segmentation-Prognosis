@@ -4,11 +4,13 @@
 # Needs Kaggle credentials: %USERPROFILE%\.kaggle\access_token + username (new tokens), or kaggle.json (legacy).
 # Uploads ml/ as a private Kaggle dataset, pushes a private kernel with the three datasets attached,
 # waits for it to finish and downloads its output to kaggle_output\. Progress goes to kaggle.log.
-param([ValidateSet("probe", "train")][string]$Mode = "probe")
+param([ValidateSet("probe", "train")][string]$Mode = "probe",
+      [ValidateSet("main", "screen")][string]$Job = "main")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
-$log = Join-Path $root "kaggle.log"
+$suffix = $(if ($Job -eq "screen") { "_screen" } else { "" })
+$log = Join-Path $root "kaggle$suffix.log"
 function Log($m) { $line = "$(Get-Date -Format s) $m"; Write-Host $line; Add-Content -Path $log -Value $line }
 function Run($exe, [string[]]$a) { $o = & cmd /c "`"$exe`" $($a -join ' ') 2>&1"; $o | ForEach-Object { Add-Content -Path $log -Value "    $_" }; return ($o -join "`n") }
 
@@ -56,10 +58,10 @@ if (Test-Path $cfg) {
     Write-Host "Files found in .kaggle folders (names only): $($seen -join ', ')"
     throw "No Kaggle credentials. Save your API token to $tokenFile (and your username to $userFile), then run this again."
 }
-Log "==== mode=$Mode kaggle user=$user"
+Log "==== job=$Job mode=$Mode kaggle user=$user"
 
 # ---------------------------------------------------------------- code dataset
-$build = Join-Path $root "kaggle_build"
+$build = Join-Path $root "kaggle_build$suffix"
 if (Test-Path $build) { Remove-Item $build -Recurse -Force }
 $code = Join-Path $build "code"
 New-Item -ItemType Directory -Force $code | Out-Null
@@ -85,18 +87,23 @@ Start-Sleep -Seconds 20   # let the new version propagate before the kernel moun
 # ---------------------------------------------------------------- kernel
 $kern = Join-Path $build "kernel"
 New-Item -ItemType Directory -Force $kern | Out-Null
-(Get-Content (Join-Path $root "kaggle\run.py") -Raw).Replace("__MODE__", $Mode) | Set-Content (Join-Path $kern "run.py") -Encoding ascii
-$kid = "$user/qihgnn-msca-train"
+$entry = $(if ($Job -eq "screen") { "kaggle\screen.py" } else { "kaggle\run.py" })
+(Get-Content (Join-Path $root $entry) -Raw).Replace("__MODE__", $Mode) | Set-Content (Join-Path $kern "run.py") -Encoding ascii
+$kid = $(if ($Job -eq "screen") { "$user/qihgnn-msca-screen" } else { "$user/qihgnn-msca-train" })
+$sources = @($dsId, "awsaf49/brats2020-training-data", "harshwardhanbhangale/lits-dataset", "balajikartheek/cervical-cancer-segmentation")
+if ($Job -eq "screen") {
+    $sources += @("masoudnickparvar/brain-tumor-mri-dataset", "navoneel/brain-mri-images-for-brain-tumor-detection", "nikhilroxtomar/brain-tumor-segmentation")
+}
 $meta = [ordered]@{
     id                  = $kid
-    title               = "qihgnn-msca-train"
+    title               = $kid.Split("/")[1]
     code_file           = "run.py"
     language            = "python"
     kernel_type         = "script"
     is_private          = $true
     enable_gpu          = ($Mode -eq "train")
     enable_internet     = $true
-    dataset_sources     = @($dsId, "awsaf49/brats2020-training-data", "harshwardhanbhangale/lits-dataset", "balajikartheek/cervical-cancer-segmentation")
+    dataset_sources     = $sources
     competition_sources = @()
     kernel_sources      = @()
 }
@@ -116,7 +123,7 @@ do {
 } until ($s -match "complete|error|cancel" -or (Get-Date) -gt $deadline)
 
 # ---------------------------------------------------------------- output
-$outDir = Join-Path $root "kaggle_output\$Mode"
+$outDir = Join-Path $root $(if ($Job -eq "screen") { "kaggle_output\screen-$Mode" } else { "kaggle_output\$Mode" })
 if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
 New-Item -ItemType Directory -Force $outDir | Out-Null
 Run $kaggle @("-m", "kaggle", "kernels", "output", $kid, "-p", "`"$outDir`"") | Out-Null

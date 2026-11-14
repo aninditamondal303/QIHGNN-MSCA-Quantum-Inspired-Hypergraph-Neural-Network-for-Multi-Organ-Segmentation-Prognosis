@@ -1,5 +1,6 @@
-# Publishes the website (static mode: everything works except "Run network", which needs the API)
-# to GitHub Pages on every push to main. Enable once: Settings -> Pages -> Source: GitHub Actions.
+# Publishes the website to GitHub Pages on every push to main (Settings -> Pages -> Source: GitHub Actions).
+# Scan analysis runs in the visitor's browser, so it works on Pages; only the research model's
+# "Run network" button needs the Python API.
 # GitHub Pages needs a public repository on a free plan.
 name: pages
 
@@ -29,6 +30,8 @@ jobs:
         working-directory: web
         env:
           REPO_URL: https://github.com/${{ github.repository }}
+          # Pages serves the site from /<repo>/; every route and asset is resolved against this base.
+          BASE_PATH: /${{ github.event.repository.name }}/
         run: |
           export GIT_COMMIT="${GITHUB_SHA::7}"
           npm ci --no-audit --no-fund

@@ -170,3 +170,10 @@ def test_list_files_matches_rglob(tmp_path):
         (tmp_path / rel).write_bytes(b"0")
     assert sorted(list_files(tmp_path)) == sorted(p for p in tmp_path.rglob("*") if p.is_file())
     assert [p.name for p in list_files(tmp_path, (".h5",))] == ["x.h5", "y.H5"]
+
+
+def test_brats_h5_ids_follow_the_mirror_numbering():
+    from qihgnn.data.adapters import brats_h5_patient_id, h5_id_offset
+
+    assert h5_id_offset({1: 0, 2: 0, 369: 0}) == 0 and brats_h5_patient_id(1, 0) == "BraTS20_Training_001"
+    assert h5_id_offset({0: 0, 368: 0}) == 1 and brats_h5_patient_id(368, 1) == "BraTS20_Training_369"

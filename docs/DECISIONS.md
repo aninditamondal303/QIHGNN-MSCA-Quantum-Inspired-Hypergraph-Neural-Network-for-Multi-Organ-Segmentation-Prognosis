@@ -55,3 +55,25 @@ Every place where this implementation had to choose something the project report
 **KaTeX loads lazily.** It is 260 kB, so it is split into its own chunk and loaded the first time an equation is shown.
 
 **Matched baseline.** `configs/baseline.json` turns off the three proposed stages, leaving 5,989,291 parameters. For a strictly parameter-matched comparison, widen the baseline encoder and record that choice here.
+
+## Screening tools (detect, outline, prognosis)
+
+**Why a second set of models.** The 3D research network needs registered 3D volumes in a fixed input space; most images people can actually share are single 2D slices. The screening tools answer the practical questions (is there a tumour, where, how large, what is the outlook) on exactly what a user can upload, and run in the browser so no scan leaves the device.
+
+**Classes.** No tumour, glioma, meningioma, pituitary tumour, and "not a brain MRI". The last class is trained on abdominal CT slices, colposcopy photographs and synthetic non-medical images so the tool rejects inputs it was never meant to read instead of forcing them into a tumour class.
+
+**Duplicate-aware splits.** The Brain Tumor MRI Dataset ships augmented copies ("aug" files) and test images that also appear in its training folder. Images are grouped by a difference hash taken as the minimum over all 8 flips and 90-degree rotations, near matches (at most 2 differing bits) are clustered exactly with a pigeonhole band index, and whole clusters are assigned to train, validation or test. `dedup_audit` in `screen_metrics.json` records how many official test images had a copy in training.
+
+**External test set.** Brain MRI Images for Brain Tumor Detection is used only for testing. It contains every image twice (two folder trees), so it is de-duplicated internally first; then every image whose cluster contains one of our training, validation or test images is removed. Both counts are published.
+
+**BraTS patient IDs.** The per-slice .h5 mirror numbers volumes 1 to 369 (`name_mapping.csv` confirms volume 1 is BraTS20_Training_001). An earlier version assumed 0-based numbering and shifted every survival record by one patient; IDs are now derived from the data (`h5_id_offset`) and covered by a test.
+
+**Calibration and abstention.** A single temperature is fitted on the validation split by minimising negative log-likelihood. The abstention threshold is the smallest confidence at which validation predictions reach 98% accuracy; the coverage and accuracy it gives on the test split are reported.
+
+**Segmentation input.** One grey slice, scaled by the 1st and 99th percentiles of its non-zero pixels. Training draws a random BraTS sequence (T1, T1ce, T2, FLAIR) per sample and mixes in skull-on contrast T1 images, so the outliner is not tied to one sequence or to skull stripping. BraTS splits are per patient; the 2D figshare set has no patient IDs, so its Dice is reported separately with that caveat.
+
+**Volume.** On a 3D NIfTI, every axial slice is outlined and voxels are summed with the file's own voxel size, corrected for the letterbox resize. Its error against expert volumes on held-out BraTS patients is published next to every estimate.
+
+**Prognosis.** A ridge-penalised Cox model (Breslow ties) on age, log whole-tumour volume and extent of resection, fitted on BraTS 2020 survival data. Reported out of sample: repeated 5-fold C-index against age-only, volume-only and age-plus-resection models, Kaplan-Meier curves of out-of-fold risk thirds with a log-rank test, and BraTS short/mid/long class accuracy against the majority-class baseline. 200 bootstrap refits, expressed in the final model's standardisation, give the uncertainty band shown in the browser.
+
+**Browser parity.** The ONNX exports are compared with PyTorch on the same input during export. Preprocessing and the Cox maths are implemented again in TypeScript and unit-tested against fixtures produced by the Python code (`web/tests/screen.test.ts`); agreement is within 1e-5 for normalisation and 1e-9 for survival curves.

@@ -1,5 +1,5 @@
 // End-to-end smoke test in a real Chromium: `npm run build && npm run test:e2e`.
-// Starts the preview server on a free port, walks through every interactive section,
+// Starts the preview server on a free port, walks through every page and interactive element,
 // and fails on any uncaught page error or horizontal overflow.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -39,13 +39,14 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(URL, { waitUntil: 'networkidle' });
 
-  await step('hero renders headline and figures', async () => {
-    assert.match(await page.locator('h1').innerText(), /SILENCE\s+IS NOT\s+BACKGROUND\./i);
-    assert.ok(await page.getByText('8,347,071').first().isVisible());
+  await step('home renders headline, calls to action and ticker', async () => {
+    assert.match(await page.locator('h1').innerText(), /SEE IT\.\s+MEASURE IT\.\s+EXPLAIN IT\./i);
+    assert.ok(await page.getByRole('link', { name: /Analyse a scan/ }).first().isVisible());
+    assert.ok(await page.locator('.ticker').isVisible());
   });
 
   await step('header reports static preview when the API is down', async () => {
-    await page.getByText('Static preview').waitFor({ timeout: 5000 });
+    await page.getByText('Static preview').first().waitFor({ timeout: 5000 });
   });
 
   await step('theme toggle switches and persists', async () => {
@@ -56,59 +57,58 @@ try {
     assert.equal(await page.evaluate(() => localStorage.getItem('qihgnn-theme')), after);
   });
 
-  await step('hero case switcher cycles cases', async () => {
-    const id = () => page.locator('figure[aria-label="Case viewer"] .font-mono').first().innerText();
+  await step('research viewer cycles cases', async () => {
+    const id = () => page.locator('figure[aria-label="Research model viewer"] .font-mono').first().innerText();
     const a = await id();
     await page.getByRole('button', { name: 'Next case' }).click();
     assert.notEqual(await id(), a);
   });
 
-  await step('architecture stage selection updates the detail panel', async () => {
-    await page.locator('#architecture').getByRole('button', { name: /Multi-scale cross-attention/ }).first().click();
-    await page.locator('#architecture h3', { hasText: /Multi-scale cross-attention/i }).waitFor();
-    assert.ok(await page.locator('#architecture .katex').first().isVisible());
+  await step('header links navigate between pages without reloading', async () => {
+    await page.evaluate(() => { window.__sameDoc = true; });
+    for (const [name, path, heading] of [['How it works', '/how-it-works', /pixels to a prognosis/i], ['Accuracy', '/accuracy', /measured, not claimed/i], ['Data & privacy', '/data', /nothing of yours out/i], ['About', '/about', /Anindita Mondal/i]]) {
+      await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name }).click();
+      await page.waitForURL(`**${path}`);
+      assert.match(await page.locator('h1').innerText(), heading);
+    }
+    assert.equal(await page.evaluate(() => window.__sameDoc), true, 'navigation reloaded the page');
   });
 
-  await step('workbench shows silent organs for the abdomen case', async () => {
+  await step('deep links and the 404 page work', async () => {
+    await page.goto(URL + 'accuracy', { waitUntil: 'networkidle' });
+    assert.match(await page.locator('h1').innerText(), /measured, not claimed/i);
+    await page.goto(URL + 'no-such-page', { waitUntil: 'networkidle' });
+    assert.match(await page.locator('h1').innerText(), /nothing on this slice/i);
+    await page.goBack();
+    assert.match(await page.locator('h1').innerText(), /measured, not claimed/i);
+  });
+
+  await step('how it works: architecture stages and workbench', async () => {
+    await page.goto(URL + 'how-it-works', { waitUntil: 'networkidle' });
+    await page.locator('#architecture').getByRole('button', { name: /Multi-scale cross-attention/ }).first().click();
+    await page.locator('#architecture h3', { hasText: /Multi-scale cross-attention/i }).waitFor();
     const wb = page.locator('#workbench');
     await wb.getByRole('radio', { name: /PH-ABDOMEN-01/ }).click();
     await wb.getByText('no corpus supervises it here; zeroed by the server').first().waitFor();
-    await wb.getByRole('radio', { name: 'Sagittal' }).click();
-    assert.match(await wb.getByText(/sagittal \d+ \/ \d+/i).first().innerText(), /sagittal/i);
-  });
-
-  await step('run network explains how to start the API', async () => {
     await page.getByRole('button', { name: 'Run network on this case' }).click();
     await page.locator('#workbench [role=status]').waitFor({ timeout: 5000 });
   });
 
-  await step('lab: naive loss rises while marginal loss stays fixed', async () => {
-    const lab = page.locator('#verification');
-    const slider = lab.getByRole('slider', { name: 'Moved' });
-    const read = async () => Number((await lab.locator('p.display').nth(1).innerText()).trim());
-    const readM = async () => Number((await lab.locator('p.display').nth(0).innerText()).trim());
-    await slider.fill('10');
-    const n1 = await read();
-    const m1 = await readM();
-    await slider.fill('80');
-    assert.ok((await read()) > n1, 'naive loss should increase');
-    assert.equal(await readM(), m1);
+  await step('about: questions expand', async () => {
+    await page.goto(URL + 'about', { waitUntil: 'networkidle' });
+    const q = page.locator('details').first();
+    await q.locator('summary').click();
+    assert.equal(await q.evaluate((d) => d.open), true);
   });
 
-  await step('literature filters and search', async () => {
-    const lit = page.locator('#literature');
-    await lit.getByRole('radio', { name: /Partial supervision/ }).click();
-    assert.equal(await lit.locator('ul > li').count(), 10);
-    await lit.getByRole('radio', { name: /^All/ }).click();
-    await lit.getByPlaceholder('Search titles, authors, gaps').fill('hypergraph');
-    assert.ok((await lit.locator('ul > li').count()) >= 3);
-  });
-
-  await step('model card opens and closes with Escape', async () => {
-    await page.getByRole('button', { name: 'Model card' }).first().click();
-    await page.getByRole('dialog').waitFor();
-    await page.keyboard.press('Escape');
-    assert.equal(await page.getByRole('dialog').count(), 0);
+  await step('analyse: upload area, and a held-out sample is analysed in the browser when models are published', async () => {
+    await page.goto(URL + 'analyse', { waitUntil: 'networkidle' });
+    await page.getByText('Drop a scan here').waitFor();
+    const published = await page.evaluate(async () => (await fetch('screen/classifier.onnx', { method: 'HEAD' })).ok);
+    if (!published) return;
+    await page.getByRole('button', { name: /Glioma|No tumour|Meningioma|Pituitary/ }).first().click();
+    await page.getByText(/Tumour detected|No tumour found|Not confident enough|does not look like a brain MRI/i).first().waitFor({ timeout: 60000 });
+    assert.ok(await page.getByText('Calibrated probabilities').isVisible());
   });
 
   await step('no uncaught page errors', async () => {
@@ -116,13 +116,17 @@ try {
   });
 
   const mobile = await browser.newPage({ viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true });
-  await mobile.goto(URL, { waitUntil: 'networkidle' });
-  await step('no horizontal scroll at 360 px', async () => {
-    assert.ok((await mobile.evaluate(() => document.documentElement.scrollWidth)) <= 360);
-  });
-  await step('mobile contents menu opens', async () => {
-    await mobile.getByRole('button', { name: 'Open contents' }).click();
-    assert.ok(await mobile.locator('#mobile-nav').isVisible());
+  for (const path of ['', 'analyse', 'how-it-works', 'accuracy', 'data', 'about']) {
+    await mobile.goto(URL + path, { waitUntil: 'networkidle' });
+    await step(`no horizontal scroll at 360 px: /${path}`, async () => {
+      assert.ok((await mobile.evaluate(() => document.documentElement.scrollWidth)) <= 360);
+    });
+  }
+  await step('mobile menu opens and navigates', async () => {
+    await mobile.getByRole('button', { name: 'Open menu' }).click();
+    await mobile.locator('#mobile-nav').getByRole('link', { name: 'Accuracy' }).click();
+    await mobile.waitForURL('**/accuracy');
+    assert.equal(await mobile.locator('#mobile-nav').count(), 0);
   });
 } finally {
   await browser.close();

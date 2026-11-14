@@ -86,7 +86,8 @@ def brats_tasks(root: Path) -> List[CaseTask]:
         for p in h5:
             v, s = H5_SLICE.search(p.name).groups()
             volumes[int(v)].append((int(s), p))
-        return [CaseTask(f"BraTS20_Training_{v + 1:03d}", "brats2020", (lambda v=v, it=items: _brats_h5_volume(v, it, survival)))
+        off = h5_id_offset(volumes)
+        return [CaseTask(brats_h5_patient_id(v, off), "brats2020", (lambda v=v, it=items: _brats_h5_volume(v, it, survival, off)))
                 for v, items in sorted(volumes.items())]
     raise FileNotFoundError(f"No BraTS NIfTI segmentations or volume_*_slice_*.h5 files under {root}")
 
@@ -121,6 +122,16 @@ def _brats_nifti(seg_files: List[Path], survival) -> Iterator[RawCase]:
         yield _attach_survival(case, survival)
 
 
+def h5_id_offset(volume_numbers) -> int:
+    """BraTS 2020 cases are numbered 001-369. The per-slice .h5 mirror numbers volumes from 1 (volume_1 is
+    BraTS20_Training_001); a mirror numbering from 0 would need +1. Decided from the data, never assumed."""
+    return 1 if min(volume_numbers) == 0 else 0
+
+
+def brats_h5_patient_id(v: int, offset: int) -> str:
+    return f"BraTS20_Training_{v + offset:03d}"
+
+
 def _read_h5(p: Path):
     import h5py
 
@@ -128,7 +139,7 @@ def _read_h5(p: Path):
         return np.asarray(f["image"], dtype=np.float32), np.asarray(f["mask"])  # (240, 240, 4), (240, 240, 3) one-hot NCR/ED/ET
 
 
-def _brats_h5_volume(v: int, items: List[tuple], survival) -> RawCase:
+def _brats_h5_volume(v: int, items: List[tuple], survival, offset: int = 0) -> RawCase:
     items = sorted(items)
     pairs = _read_all(_read_h5, [p for _, p in items])
     imgs, masks = [a for a, _ in pairs], [b for _, b in pairs]
@@ -136,7 +147,7 @@ def _brats_h5_volume(v: int, items: List[tuple], survival) -> RawCase:
     mask = np.stack(masks, axis=-1).any(axis=2)  # (H, W, D) whole tumour
     image = np.stack([mri_zscore(c) for c in image])
     label = np.where(mask, 1, 0).astype(np.uint8)
-    pid = f"BraTS20_Training_{v + 1:03d}"  # h5 volumes are 0-indexed in this mirror
+    pid = brats_h5_patient_id(v, offset)
     case = RawCase(pid, "brats2020", image, label, supervision_vector(["brain"]), "MRI")
     return _attach_survival(case, survival)
 
@@ -146,8 +157,9 @@ def _brats_h5(files: List[Path], survival) -> Iterator[RawCase]:
     for p in files:
         v, s = H5_SLICE.search(p.name).groups()
         volumes[int(v)].append((int(s), p))
+    off = h5_id_offset(volumes)
     for v, items in sorted(volumes.items()):
-        yield _brats_h5_volume(v, items, survival)
+        yield _brats_h5_volume(v, items, survival, off)
 
 
 # ----------------------------------------------------------------------------- LiTS

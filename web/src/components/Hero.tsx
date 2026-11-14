@@ -1,23 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
-import { int } from '../lib/format';
 import type { CaseInfo, Verification } from '../lib/types';
 import { defaultChannel, LABEL_ORDER, overlaysFor, useCase } from '../lib/useCase';
 import { labelExtent } from '../lib/volume';
 import { Container } from './chrome';
+import { ScanHud } from './fx';
 import { FilmCanvas } from './FilmCanvas';
 import { Legend } from './Legend';
 
-function Figure({ value, children }: { value: string; children: React.ReactNode }) {
-  return (
-    <div className="border-t border-rule pt-3">
-      <p className="display num text-[clamp(1.9rem,1.2rem+1.6vw,2.75rem)] leading-none tracking-[-0.04em]">{value}</p>
-      <p className="mt-2 max-w-[30ch] text-small text-muted">{children}</p>
-    </div>
-  );
-}
-
-export function Hero({ cases, verification }: { cases: CaseInfo[]; verification: Verification | null }) {
+export function Hero({ cases, children }: { cases: CaseInfo[]; verification?: Verification | null; children: React.ReactNode }) {
   const [which, setWhich] = useState(0);
   const info = cases[which] ?? null;
   const channel = info ? defaultChannel(info) : 0;
@@ -51,45 +42,16 @@ export function Hero({ cases, verification }: { cases: CaseInfo[]; verification:
   const overlays = info ? overlaysFor(info) : [];
   const silent = info ? info.present.filter((p) => !info.supervised.includes(p)) : [];
   const supervised = info ? info.present.filter((p) => info.supervised.includes(p)) : [];
-  const unl = verification?.unlabelled_prediction;
-  const checks = verification ? Object.values(verification.checks) : [];
 
   const step = (d: number) => cases.length && setWhich((w) => (w + d + cases.length) % cases.length);
 
   return (
-    <section id="top" aria-labelledby="hero-title" className="pb-16 pt-8 md:pt-12 lg:pb-24">
+    <section id="top" aria-labelledby="hero-title" className="pb-16 pt-10 md:pt-16 lg:pb-24">
       <Container>
         <div className="grid grid-cols-12 gap-x-6 gap-y-10">
-          <div className="@container col-span-12 flex flex-col lg:col-span-7">
-            {/* Sized in container units: "BACKGROUND." is 8.31 em wide in Syne Bold, so 100cqi / 8.45 fills the column. */}
-            <h1 id="hero-title" className="display leading-[0.86]" style={{ fontSize: 'calc(100cqi / 8.45)' }}>
-              <span className="block">Silence</span>
-              <span className="block pl-[39%]">is not</span>
-              <span className="block">background.</span>
-            </h1>
-            <p className="mt-8 max-w-[52ch] text-lead font-light">
-              One network that outlines organs in CT and MRI and estimates survival risk from the same encoding. It learns from public
-              datasets that each label a single organ, without being taught that every unlabelled organ is empty tissue.
-            </p>
-            <p className="mt-6 max-w-[60ch] text-small text-muted">
-              B.Tech project, Department of Computational Intelligence, SRM Institute of Science and Technology. Satakshi Srivastava, Anindita
-              Mondal and Aayushman Ghatak, guided by Dr G Tamilmani.
-            </p>
-            <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-7 pt-12">
-              <Figure value={verification ? int(verification.parameters.total) : '8,347,071'}>
-                Parameters across eight stages, equal to the report’s count stage by stage.
-              </Figure>
-              <Figure value="66,577">Attention entries per sample, where full voxel attention needs 1.1 × 10¹².</Figure>
-              <Figure value={unl ? `+${unl.max_marginal_change.toFixed(2)}` : '+0.00'}>
-                Loss charged for recognising an organ the dataset never labelled, against +{unl ? unl.min_naive_increase.toFixed(2) : '0.68'} under a naive loss.
-              </Figure>
-              <Figure value={verification ? `${checks.filter(Boolean).length}/${checks.length}` : '—'}>
-                Numerical checks passing in the last recorded verification run.
-              </Figure>
-            </div>
-          </div>
+          <div className="@container col-span-12 flex flex-col lg:col-span-7">{children}</div>
 
-          <figure className="col-span-12 lg:col-span-5" aria-label="Case viewer">
+          <figure className="col-span-12 lg:col-span-5" aria-label="Research model viewer">
             <div className="film">
               <div className="flex items-center justify-between border-b border-film-rule px-4 py-2.5">
                 <div className="flex min-w-0 items-baseline gap-3">
@@ -106,6 +68,7 @@ export function Hero({ cases, verification }: { cases: CaseInfo[]; verification:
                   </button>
                 </div>
               </div>
+              <ScanHud readout={[['CASE', info?.id ?? '—'], ['SEQ', info?.channels[channel]?.name ?? '—'], ['SLICE', `${z ?? 0}`], ['MODE', 'PHANTOM']]}>
               <div className="relative">
                 <FilmCanvas
                   image={image}
@@ -123,6 +86,7 @@ export function Hero({ cases, verification }: { cases: CaseInfo[]; verification:
                 )}
                 <span className="meta num absolute bottom-3 right-3 bg-film/80 px-1.5 py-0.5 text-film-muted">z {String(z ?? 0).padStart(2, '0')}</span>
               </div>
+              </ScanHud>
               <div className="grid grid-cols-6 gap-px border-t border-film-rule bg-film-rule" role="group" aria-label="Contact sheet">
                 {sheet.map((k) => (
                   <button

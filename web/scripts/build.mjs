@@ -3,6 +3,7 @@
 import { build as esbuild, context } from 'esbuild';
 import { compile } from 'tailwindcss';
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
@@ -81,14 +82,28 @@ export async function writeHtml(cssHash = 'dev', jsHash = 'dev', dev = false) {
     .replace('%CSS%', `assets/styles.css?v=${cssHash}`)
     .replace('%KATEX%', `assets/app.css?v=${jsHash}`)
     .replace('%JS%', `assets/app.js?v=${jsHash}`)
+    .replace('%BASE%', process.env.BASE_PATH || '/')
     .replace('%RELOAD%', dev ? `<script>new EventSource('/esbuild').addEventListener('change',()=>location.reload())</script>` : '');
   await writeFile(join(DIST, 'index.html'), html);
+  // GitHub Pages serves 404.html for unknown paths: the same app, so deep links like /analyse work.
+  await writeFile(join(DIST, '404.html'), html);
+}
+
+/** Self-host ONNX Runtime Web's WebAssembly backend (glue + binary); the loader is bundled by esbuild. */
+export async function copyOrt() {
+  // The package's exports map hides its dist/ folder from require.resolve, so locate the package directly.
+  const base = (require.resolve.paths('onnxruntime-web') || []).map((p) => join(p, 'onnxruntime-web', 'dist')).find((p) => existsSync(p));
+  if (!base) throw new Error('onnxruntime-web is not installed: run npm install in web/');
+  const dist = base;
+  await mkdir(join(DIST, 'ort'), { recursive: true });
+  for (const f of ['ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm']) await cp(join(dist, f), join(DIST, 'ort', f));
 }
 
 async function main() {
   await rm(DIST, { recursive: true, force: true });
   await mkdir(join(DIST, 'assets'), { recursive: true });
   await cp(join(ROOT, 'public'), DIST, { recursive: true });
+  await copyOrt();
   const [css, result] = await Promise.all([buildCss(), esbuild({ ...esbuildOptions(false), metafile: true })]);
   await writeFile(join(DIST, 'assets', 'styles.css'), css);
   const js = await readFile(join(DIST, 'assets', 'app.js'), 'utf8');

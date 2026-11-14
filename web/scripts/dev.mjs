@@ -7,7 +7,7 @@ import { watch } from 'node:fs';
 import http from 'node:http';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCss, esbuildOptions, writeHtml } from './build.mjs';
+import { buildCss, copyOrt, esbuildOptions, writeHtml } from './build.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
@@ -18,7 +18,8 @@ const noWatch = process.argv.includes('--no-watch');
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.png': 'image/png', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.svg': 'image/svg+xml',
-  '.map': 'application/json', '.txt': 'text/plain; charset=utf-8',
+  '.map': 'application/json', '.txt': 'text/plain; charset=utf-8', '.mjs': 'text/javascript', '.wasm': 'application/wasm',
+  '.onnx': 'application/octet-stream', '.gz': 'application/gzip', '.jpg': 'image/jpeg',
 };
 const clients = new Set();
 
@@ -33,6 +34,7 @@ async function rebuildCss() {
 async function start() {
   await mkdir(join(DIST, 'assets'), { recursive: true });
   await cp(join(ROOT, 'public'), DIST, { recursive: true });
+  await copyOrt();
   await writeHtml('dev', String(Date.now()), !noWatch);
   await rebuildCss();
   const ctx = await context({
@@ -93,6 +95,12 @@ async function start() {
       res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
       res.end(body);
     } catch {
+      // Unknown paths without a file extension are app routes (/analyse, /accuracy ...): serve the app.
+      if (!extname(path)) {
+        res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' });
+        res.end(await readFile(join(DIST, 'index.html')));
+        return;
+      }
       res.writeHead(404, { 'content-type': 'text/plain' }).end('Not found');
     }
   }).listen(PORT, () => {

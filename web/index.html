@@ -2,9 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <base href="%BASE%" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>QIHGNN-MSCA Research Archive</title>
-    <meta name="description" content="One network for multi-organ segmentation and prognosis, trained on datasets that each label a single organ. Architecture, live verification and an interactive scan workbench." />
+    <title>QIHGNN-MSCA · Brain tumour detection, outlining and prognosis</title>
+    <meta name="description" content="Upload a brain MRI and get a tumour check, an outline and a survival estimate, computed privately in your browser. Every number is measured on held-out and external data." />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="fonts/Syne-var.woff" as="font" type="font/woff" crossorigin />
@@ -23,7 +24,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <noscript>This archive needs JavaScript for the scan viewer and the verification instruments.</noscript>
+    <noscript>This site needs JavaScript: the scan analysis runs in your browser.</noscript>
     <script type="module" src="%JS%"></script>
     %RELOAD%
   </body>
