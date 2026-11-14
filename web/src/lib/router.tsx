@@ -32,6 +32,13 @@ export function navigate(to: string): void {
   else window.scrollTo({ top: 0 });
 }
 
+/** Back to the interactive intro (the scanner) from anywhere on the site. */
+export function openIntro(): void {
+  if (currentPath() !== '/') window.history.pushState({}, '', href('/'));
+  window.dispatchEvent(new Event('openintro'));
+  window.dispatchEvent(new Event('routechange'));
+}
+
 export function useRoute(): string {
   const [path, setPath] = useState(currentPath);
   useEffect(() => {

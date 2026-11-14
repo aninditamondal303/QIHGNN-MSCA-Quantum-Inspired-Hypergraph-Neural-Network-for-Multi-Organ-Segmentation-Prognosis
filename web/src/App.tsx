@@ -46,6 +46,12 @@ export function App() {
   };
 
   useEffect(() => {
+    const open = () => setEntered(false);
+    window.addEventListener('openintro', open);
+    return () => window.removeEventListener('openintro', open);
+  }, []);
+
+  useEffect(() => {
     if (entered) document.getElementById('main')?.focus({ preventScroll: true });
   }, [path, entered]);
 

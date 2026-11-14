@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuArrowRight, LuMenu, LuMoon, LuSun, LuX } from 'react-icons/lu';
-import { Link, ROUTES } from '../lib/router';
+import { LuArrowRight, LuMenu, LuMoon, LuScanLine, LuSun, LuX } from 'react-icons/lu';
+import { Link, openIntro, ROUTES } from '../lib/router';
 import type { ApiState } from '../lib/data';
 
 export function Container({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -65,7 +65,17 @@ export function Header({ api, path }: { api: ApiState; path: string }) {
   return (
     <header className="sticky top-0 z-40 border-b border-rule bg-surface/95 backdrop-blur-[2px]">
       <Container className="flex h-16 items-center gap-4">
-        <Link to="/" className="flex items-center gap-2.5 no-underline" aria-label="QIHGNN-MSCA home">
+        <Link
+          to="/"
+          className="flex items-center gap-2.5 no-underline"
+          aria-label="QIHGNN-MSCA: back to the interactive intro"
+          title="Back to the interactive intro"
+          onClick={(e) => {
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            openIntro();
+          }}
+        >
           <Mark className="size-7" />
           <span className="display text-[1.1rem] tracking-[-0.02em]">QIHGNN-MSCA</span>
         </Link>
@@ -88,6 +98,16 @@ export function Header({ api, path }: { api: ApiState; path: string }) {
           </ul>
         </nav>
         <div className="ml-auto flex items-center gap-1 lg:ml-2">
+          <button
+            type="button"
+            onClick={openIntro}
+            className="inline-flex h-10 items-center gap-2 px-2.5 text-small text-fg hover:bg-raised"
+            aria-label="Back to the interactive intro"
+            title="Back to the interactive intro"
+          >
+            <LuScanLine className="size-[18px]" aria-hidden="true" />
+            <span className="hidden xl:inline">Intro</span>
+          </button>
           <button
             type="button"
             onClick={toggle}
@@ -124,6 +144,10 @@ export function Header({ api, path }: { api: ApiState; path: string }) {
                 <LuArrowRight className="size-4 text-muted" aria-hidden="true" />
               </Link>
             ))}
+            <button type="button" onClick={openIntro} className="flex items-center justify-between border-b border-rule py-3.5 text-left">
+              <span className="display text-lead">Interactive intro</span>
+              <LuScanLine className="size-4 text-muted" aria-hidden="true" />
+            </button>
             <div className="py-3 sm:col-span-2"><StatusDot api={api} /></div>
           </Container>
         </nav>

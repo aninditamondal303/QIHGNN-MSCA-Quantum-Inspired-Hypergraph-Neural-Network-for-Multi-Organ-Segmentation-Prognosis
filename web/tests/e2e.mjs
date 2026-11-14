@@ -61,6 +61,20 @@ try {
     await fresh.close();
   });
 
+  await step('intro: header button and logo bring the scanner back from any page', async () => {
+    await page.goto(URL + 'about', { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: 'Back to the interactive intro' }).click();
+    await page.getByRole('dialog', { name: 'Introduction' }).waitFor();
+    assert.ok(!page.url().includes('/about'), page.url());
+    await page.keyboard.press('Escape');
+    await page.locator('h1', { hasText: /See it/i }).waitFor();
+    await page.goto(URL + 'accuracy', { waitUntil: 'networkidle' });
+    await page.getByRole('link', { name: /back to the interactive intro/i }).click();
+    await page.getByRole('dialog', { name: 'Introduction' }).waitFor();
+    await page.getByRole('button', { name: /Skip intro/ }).click();
+    await page.locator('h1', { hasText: /See it/i }).waitFor();
+  });
+
   await step('intro: press and hold scans, then enters the site', async () => {
     const p2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     await p2.goto(URL, { waitUntil: 'networkidle' });
@@ -166,6 +180,12 @@ try {
       assert.ok((await mobile.evaluate(() => document.documentElement.scrollWidth)) <= 360);
     });
   }
+  await step('mobile menu offers the interactive intro', async () => {
+    await mobile.getByRole('button', { name: 'Open menu' }).click();
+    assert.ok(await mobile.locator('#mobile-nav').getByRole('button', { name: 'Interactive intro' }).isVisible());
+    await mobile.getByRole('button', { name: 'Close menu' }).click();
+  });
+
   await step('mobile menu opens and navigates', async () => {
     await mobile.getByRole('button', { name: 'Open menu' }).click();
     await mobile.locator('#mobile-nav').getByRole('link', { name: 'Accuracy' }).click();
