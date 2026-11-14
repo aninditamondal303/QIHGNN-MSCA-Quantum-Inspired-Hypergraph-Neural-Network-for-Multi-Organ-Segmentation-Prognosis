@@ -150,3 +150,23 @@ def test_mosaic_layout_round_trips():
     k = 7
     r, c = divmod(k, cols)
     assert (m[r * 16:(r + 1) * 16, c * 12:(c + 1) * 12] == vol[:, :, k]).all()
+
+
+def test_jpeg_display_mask_ignores_compression_ringing():
+    m = np.zeros((8, 8), np.uint8)
+    m[2:6, 2:6] = 255
+    m[1, 2:6] = 9  # JPEG ringing just outside the organ edge
+    m[6, 2:6] = 31
+    m[3, 3] = 240  # compression noise inside the organ
+    out = P.rescale_display_mask(m)
+    assert out.sum() == 16 and out[1].sum() == 0 and out[6].sum() == 0
+
+
+def test_list_files_matches_rglob(tmp_path):
+    from qihgnn.data.listing import list_files
+
+    for rel in ("a/x.h5", "a/b/y.H5", "c/z.jpg", "top.csv"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_bytes(b"0")
+    assert sorted(list_files(tmp_path)) == sorted(p for p in tmp_path.rglob("*") if p.is_file())
+    assert [p.name for p in list_files(tmp_path, (".h5",))] == ["x.h5", "y.H5"]

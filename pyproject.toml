@@ -16,7 +16,7 @@ src = ["ml", "api"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "B"]
-ignore = ["E501", "E741", "B008", "B904", "B905"]
+ignore = ["E501", "E702", "E741", "B008", "B904", "B905"]
 
 [tool.coverage.run]
 source = ["ml/qihgnn", "api"]

@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, List
 
@@ -13,7 +16,7 @@ import numpy as np
 
 from ..config import LABELS, ModelConfig
 from ..verify import ROOT
-from .adapters import RawCase, cases_for
+from .adapters import RawCase, tasks_for
 from .preprocess import to_grid
 from .registry import resolved_corpora
 from .splits import assert_disjoint, split_of
@@ -36,7 +39,8 @@ def save_case(case: RawCase, shape, out: Path) -> Dict:
     }
 
 
-def build(limit: int = 0) -> Dict:
+def build(limit: int = 0, workers: int = 0) -> Dict:
+    workers = workers or min(6, os.cpu_count() or 2)
     shape = ModelConfig().input_shape
     CACHE.mkdir(parents=True, exist_ok=True)
     entries: List[Dict] = []
@@ -44,13 +48,21 @@ def build(limit: int = 0) -> Dict:
         if corpus.status != "admitted":
             print(f"skip {corpus.key}: {corpus.status}")
             continue
-        n = 0
-        for case in cases_for(corpus.key, ROOT / "data" / "raw" / corpus.key):
-            entries.append(save_case(case, shape, CACHE))
-            n += 1
-            print(f"  {corpus.key} {case.patient_id}")
-            if limit and n >= limit:
-                break
+        t0 = time.time()
+        tasks = tasks_for(corpus.key, ROOT / "data" / "raw" / corpus.key)
+        if limit:
+            tasks = tasks[:limit]
+        print(f"{corpus.key}: {len(tasks)} cases located in {time.time() - t0:.0f}s", flush=True)
+
+        def work(task, key=corpus.key):
+            entry = save_case(task.load(), shape, CACHE)
+            print(f"  {key} {entry['patient_id']}", flush=True)
+            return entry
+
+        # Several cases in flight at once: reading is I/O-bound and numpy/scipy release the GIL.
+        with ThreadPoolExecutor(workers) as pool:
+            entries += list(pool.map(work, tasks))
+        print(f"{corpus.key}: cached {len(tasks)} cases in {(time.time() - t0) / 60:.1f} min", flush=True)
     splits = {s: sorted({e["patient_id"] for e in entries if e["split"] == s}) for s in ("train", "val", "test")}
     assert_disjoint(splits)
     index = {"shape": list(shape), "labels": list(LABELS), "cases": entries,
@@ -82,7 +94,9 @@ def load_real_cases_for_web(n: int):
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, default=0, help="max cases per corpus (0 = all)")
-    build(ap.parse_args().limit)
+    ap.add_argument("--workers", type=int, default=0, help="cases preprocessed concurrently (0 = auto)")
+    args = ap.parse_args()
+    build(args.limit, args.workers)
 
 
 if __name__ == "__main__":

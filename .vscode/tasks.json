@@ -158,13 +158,19 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Add deployment (Dockerfile, GitHub Pages workflow, DEPLOY guide) and Kaggle GPU pipeline'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Speed up Kaggle data preparation and add GitHub Pages publishing task' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {
       "label": "Git: push to GitHub (aninditamondal303/qihgnn-msca)",
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File scripts\\github_publish.ps1",
+      "problemMatcher": []
+    },
+    {
+      "label": "GitHub: publish website on GitHub Pages",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\github_pages.ps1",
       "problemMatcher": []
     },
     {

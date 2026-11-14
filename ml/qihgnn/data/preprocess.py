@@ -49,6 +49,10 @@ def rescale_display_mask(mask: np.ndarray) -> np.ndarray:
     values = np.unique(m)
     if values.size <= 2 and values.max(initial=0) == 255:
         return (m > 127).astype(np.uint8)
+    if values.max(initial=0) > 2 and values.size > 3:
+        # JPEG-compressed display masks: edges ring with small non-zero values. Anything above a quarter
+        # of full scale is foreground (keeps both liver ~127 and lesion ~255 in two-level exports).
+        return (m > 63).astype(np.uint8)
     return m.astype(np.uint8)
 
 

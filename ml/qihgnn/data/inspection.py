@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import json
 import re
 from collections import Counter
 from pathlib import Path
@@ -70,13 +69,16 @@ def sample_file(p: Path) -> Dict[str, Any]:
 def inspect_dir(root: Path, per_type: int = 3) -> Dict[str, Any]:
     if not root.exists():
         return {"present": False}
-    files = [p for p in root.rglob("*") if p.is_file()]
+    from .listing import list_files
+
+    files = list_files(root)
     by_ext = Counter(ext_of(p) for p in files)
     masks = [p for p in files if MASK_HINT.search(p.relative_to(root).as_posix())]
+    mask_set = set(masks)  # built once: rebuilding it per file made this quadratic (21 min on 117k slices)
     samples: List[Dict[str, Any]] = []
     for e in by_ext:
         group = [p for p in files if ext_of(p) == e]
-        mask_group = [p for p in group if p in set(masks)]
+        mask_group = [p for p in group if p in mask_set]
         picks = group[:per_type] + mask_group[:per_type]
         samples += [sample_file(p) for p in dict.fromkeys(picks)]
     tables = [str(p.relative_to(root)) for p in files if p.suffix.lower() == ".csv"]
