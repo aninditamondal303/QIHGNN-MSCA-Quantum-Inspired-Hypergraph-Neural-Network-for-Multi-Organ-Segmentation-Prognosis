@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Header } from './components/chrome';
 import { Footer } from './components/Footer';
 import { useApiHealth, useJson } from './lib/data';
@@ -10,6 +10,7 @@ import { Analyse } from './pages/Analyse';
 import { DataPrivacy } from './pages/DataPrivacy';
 import { Home } from './pages/Home';
 import { HowItWorks } from './pages/HowItWorks';
+import { Intro } from './pages/Intro';
 import { NotFound } from './pages/NotFound';
 
 export function App() {
@@ -24,9 +25,31 @@ export function App() {
   const metrics = useJson<MetricsFile>(manifest.loading ? null : has('metrics.json'));
   const history = useJson<TrainingHistory>(manifest.loading ? null : has('training_history.json'));
 
+  // The intro plays at the site root once per visit (or with ?intro); deep links go straight to their page.
+  const [entered, setEntered] = useState(() => {
+    if (new URLSearchParams(window.location.search).has('intro')) return false;
+    try {
+      return sessionStorage.getItem('qihgnn-entered') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const enter = () => {
+    try {
+      sessionStorage.setItem('qihgnn-entered', '1');
+    } catch {
+      /* storage unavailable: the intro simply shows again next time */
+    }
+    if (window.location.search) window.history.replaceState({}, '', window.location.pathname);
+    setEntered(true);
+    window.scrollTo({ top: 0 });
+  };
+
   useEffect(() => {
-    document.getElementById('main')?.focus({ preventScroll: true });
-  }, [path]);
+    if (entered) document.getElementById('main')?.focus({ preventScroll: true });
+  }, [path, entered]);
+
+  if (path === '/' && !entered) return <Intro onEnter={enter} />;
 
   let page;
   switch (path) {

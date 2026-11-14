@@ -206,7 +206,7 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Publish the 3D research model results (brain Dice 0.877, liver 0.791, C-index 0.714 against a matched baseline); liver tumour stage crops at full CT resolution' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Add an interactive intro: a morphing brain, liver and cell point cloud with live hyperedges and a press-and-hold scan into the site' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {

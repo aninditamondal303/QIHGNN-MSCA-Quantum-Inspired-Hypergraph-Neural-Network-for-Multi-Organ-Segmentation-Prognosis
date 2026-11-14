@@ -39,6 +39,39 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(URL, { waitUntil: 'networkidle' });
 
+  await step('intro: opens the site, organ buttons switch the subject, skip enters', async () => {
+    const intro = page.getByRole('dialog', { name: 'Introduction' });
+    await intro.waitFor();
+    await page.getByRole('button', { name: /02 Liver CT/ }).click();
+    await page.getByText('the liver.').waitFor();
+    await page.getByRole('button', { name: /Skip intro/ }).click();
+    await page.locator('h1', { hasText: /See it/i }).waitFor();
+  });
+
+  await step('intro: shown once per visit, replayed with ?intro, deep links skip it', async () => {
+    await page.goto(URL, { waitUntil: 'networkidle' });
+    assert.equal(await page.getByRole('dialog', { name: 'Introduction' }).count(), 0);
+    await page.goto(URL + '?intro', { waitUntil: 'networkidle' });
+    await page.getByRole('dialog', { name: 'Introduction' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('h1', { hasText: /See it/i }).waitFor();
+    const fresh = await browser.newPage();
+    await fresh.goto(URL + 'about', { waitUntil: 'networkidle' });
+    assert.equal(await fresh.getByRole('dialog', { name: 'Introduction' }).count(), 0);
+    await fresh.close();
+  });
+
+  await step('intro: press and hold scans, then enters the site', async () => {
+    const p2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await p2.goto(URL, { waitUntil: 'networkidle' });
+    await p2.mouse.move(900, 400);
+    await p2.mouse.down();
+    await p2.waitForTimeout(2600);
+    await p2.mouse.up();
+    await p2.locator('h1', { hasText: /See it/i }).waitFor({ timeout: 5000 });
+    await p2.close();
+  });
+
   await step('home renders headline, calls to action and ticker', async () => {
     assert.match(await page.locator('h1').innerText(), /SEE IT\.\s+MEASURE IT\.\s+EXPLAIN IT\./i);
     assert.ok(await page.getByRole('link', { name: /Analyse a scan/ }).first().isVisible());
@@ -127,7 +160,7 @@ try {
   });
 
   const mobile = await browser.newPage({ viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true });
-  for (const path of ['', 'analyse', 'how-it-works', 'accuracy', 'data', 'about']) {
+  for (const path of ['', '?intro', 'analyse', 'how-it-works', 'accuracy', 'data', 'about']) {
     await mobile.goto(URL + path, { waitUntil: 'networkidle' });
     await step(`no horizontal scroll at 360 px: /${path}`, async () => {
       assert.ok((await mobile.evaluate(() => document.documentElement.scrollWidth)) <= 360);
