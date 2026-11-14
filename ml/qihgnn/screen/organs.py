@@ -207,6 +207,8 @@ def liver_dataset(imgs: List[np.ndarray], masks: List[np.ndarray], train: bool):
             if train:
                 rng = np.random.default_rng()
                 g, y = augment_gray(x, rng, LIVER, y)
+                if rng.random() < 0.5:  # scans are stored either way up; uploads may be displayed either way
+                    g, y = np.ascontiguousarray(g[::-1]), np.ascontiguousarray(y[::-1])
             else:
                 g = x.astype(np.float32) / 255.0
             return torch.from_numpy(g[None].astype(np.float32)), torch.from_numpy(y.astype(np.int64))

@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-11-14T17:18:12+00:00",
+  "runs": [
+    {
+      "checkpoint": "/tmp/repo/runs/20261114-153232-cache/best.pt",
+      "run_id": "20261114-153232-cache",
+      "epoch": 28,
+      "evaluated_on": "test split of the preprocessed corpora",
+      "cases": 72,
+      "suppressed_channels": [
+        "kidney",
+        "cervix",
+        "spleen"
+      ],
+      "segmentation": {
+        "brain": {
+          "cases": 53,
+          "dice_mean": 0.8766401473903986,
+          "dice_sd": 0.06354697808638302,
+          "hd95_mean": 2.8728781397881042
+        },
+        "liver": {
+          "cases": 19,
+          "dice_mean": 0.7913685858008409,
+          "dice_sd": 0.19956384895340176,
+          "hd95_mean": 5.344506143717644
+        }
+      },
+      "prognosis": {
+        "cases": 30,
+        "events": 29,
+        "c_index": 0.7136038186157518,
+        "td_auc": {
+          "1y": 0.7857142857142857,
+          "3y": 0.7777777777777778,
+          "5y": null
+        }
+      },
+      "label": "full"
+    },
+    {
+      "checkpoint": "/tmp/repo/runs/20261114-162453-cache/best.pt",
+      "run_id": "20261114-162453-cache",
+      "epoch": 29,
+      "evaluated_on": "test split of the preprocessed corpora",
+      "cases": 72,
+      "suppressed_channels": [
+        "kidney",
+        "cervix",
+        "spleen"
+      ],
+      "segmentation": {
+        "brain": {
+          "cases": 53,
+          "dice_mean": 0.41938390374544865,
+          "dice_sd": 0.1918244361156817,
+          "hd95_mean": 34.64621959741716
+        },
+        "liver": {
+          "cases": 19,
+          "dice_mean": 0.036978877600550464,
+          "dice_sd": 0.021649292242048937,
+          "hd95_mean": 75.22605430853838
+        }
+      },
+      "prognosis": {
+        "cases": 30,
+        "events": 29,
+        "c_index": 0.6610978520286396,
+        "td_auc": {
+          "1y": 0.7047619047619048,
+          "3y": 0.8888888888888888,
+          "5y": null
+        }
+      },
+      "label": "baseline"
+    }
+  ]
+}

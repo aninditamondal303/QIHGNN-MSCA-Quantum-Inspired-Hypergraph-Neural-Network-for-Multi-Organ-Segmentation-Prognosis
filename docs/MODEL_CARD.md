@@ -51,6 +51,16 @@ Research on partially supervised multi-organ segmentation and on joint segmentat
 - Diagnosis, treatment planning or any decision about a patient.
 - Reporting on any organ channel that no admitted dataset supervised. The server zeroes those channels before returning a prediction.
 
+### Results (held-out test patients)
+
+| Measure | QIHGNN-MSCA | Matched baseline (no MPO, hypergraph or MSCA) |
+|---|---|---|
+| Brain lesion Dice / HD95 | 0.877 ± 0.06 / 2.9 | 0.419 ± 0.19 / 34.6 |
+| Liver Dice / HD95 | 0.791 ± 0.20 / 5.3 | 0.037 ± 0.02 / 75.2 |
+| Survival C-index (30 cases) | 0.714 | 0.661 |
+
+53 brain and 19 liver test cases; 30 epochs on one T4 GPU for each model. The liver channel was trained on the LiTS JPEG mirror with liver and tumour merged.
+
 ### Inputs and outputs
 
 - Input: (B, 4, 128, 128, 64). MRI: T1, T1ce, T2, FLAIR, each z-scored over the head. CT: four Hounsfield windows of one scan. Five covariates for the prognosis head.

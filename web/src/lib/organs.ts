@@ -87,16 +87,24 @@ export function resizeBilinear(a: Float32Array, h: number, w: number, oh: number
   return out;
 }
 
-/** Crop (zero outside the slice), scale to [0, 1] and resize to TUM x TUM. */
-export function stage2Input(pixels: Uint8Array, box: Box, size = LIVER): Float32Array {
-  const { y0, x0, s } = box;
+/** A box on the 256 px grid mapped onto the original slice (letterbox scale and offsets undone). */
+export function fullBox(box: Box, lb?: Letterbox): Box {
+  if (!lb) return box;
+  const r = (v: number) => Math.floor(v + 0.5);
+  return { y0: r((box.y0 - lb.top) / lb.scale), x0: r((box.x0 - lb.left) / lb.scale), s: Math.max(1, r(box.s / lb.scale)) };
+}
+
+/** Crop (zero outside the image), scale to [0, 1] and resize to TUM x TUM. With lb, src is the original-resolution
+    slice and the 256-grid box is mapped onto it, so small tumours keep their detail. */
+export function stage2Input(src: Gray, box: Box, lb?: Letterbox): Float32Array {
+  const { y0, x0, s } = fullBox(box, lb);
   const c = new Float32Array(s * s);
   for (let y = 0; y < s; y++) {
     const sy = y0 + y;
-    if (sy < 0 || sy >= size) continue;
+    if (sy < 0 || sy >= src.h) continue;
     for (let x = 0; x < s; x++) {
       const sx = x0 + x;
-      if (sx >= 0 && sx < size) c[y * s + x] = pixels[sy * size + sx] / 255;
+      if (sx >= 0 && sx < src.w) c[y * s + x] = src.data[sy * src.w + sx] / 255;
     }
   }
   return resizeBilinear(c, s, s, TUM, TUM);
@@ -176,9 +184,15 @@ async function stage1Batch(slices: Uint8Array[]): Promise<Uint8Array[]> {
   return Array.from({ length: n }, (_, i) => argmax3(p, i * 3 * px, px));
 }
 
-/** Both stages on a batch of 256 x 256 letterboxed slices -> 0/1/2 maps. thr: tumour threshold chosen on validation patients. */
-export async function liverBatch(slices: Uint8Array[], thr: number): Promise<Uint8Array[]> {
-  const s1 = await stage1Batch(slices);
+export interface LiverInput {
+  pixels: Uint8Array; // letterboxed LIVER x LIVER slice for stage 1
+  full: Gray; // the original slice, for the stage-2 crop
+  lb: Letterbox;
+}
+
+/** Both stages on a batch of slices -> 0/1/2 maps on the 256 px grid. thr: tumour threshold chosen on validation patients. */
+export async function liverBatch(slices: LiverInput[], thr: number): Promise<Uint8Array[]> {
+  const s1 = await stage1Batch(slices.map((x) => x.pixels));
   const boxes = s1.map((c) => liverBox(c));
   const idx = boxes.map((b, i) => (b ? i : -1)).filter((i) => i >= 0);
   const probs: (Float32Array | null)[] = slices.map(() => null);
@@ -187,7 +201,7 @@ export async function liverBatch(slices: Uint8Array[], thr: number): Promise<Uin
     const s = await session('liver_tumour');
     const tp = TUM * TUM;
     const x = new Float32Array(idx.length * tp);
-    idx.forEach((i, k) => x.set(stage2Input(slices[i], boxes[i]!), k * tp));
+    idx.forEach((i, k) => x.set(stage2Input(slices[i].full, boxes[i]!, slices[i].lb), k * tp));
     const out = await s.run({ crop: new ort.Tensor('float32', x, [idx.length, 1, TUM, TUM]) });
     const p = out.prob.data as Float32Array;
     idx.forEach((i, k) => (probs[i] = uncrop(p.slice((k * 2 + 1) * tp, (k * 2 + 2) * tp), boxes[i]!)));
@@ -215,7 +229,7 @@ export interface LiverSlice {
 
 export async function liverSlice(g: Gray, thr: number): Promise<LiverSlice> {
   const { pixels, lb } = letterbox(g, LIVER);
-  const [classes] = await liverBatch([pixels], thr);
+  const [classes] = await liverBatch([{ pixels, full: g, lb }], thr);
   let l = 0;
   let t = 0;
   for (const v of classes) {

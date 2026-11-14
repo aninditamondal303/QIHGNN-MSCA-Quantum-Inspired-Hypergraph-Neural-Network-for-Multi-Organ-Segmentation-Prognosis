@@ -100,9 +100,10 @@ const run = useCallback(async (file: File) => {
           for (let i = 0; i < zs.length; i += 8) {
             setBusy(`${label}: ${Math.min(zs.length, i + 8)} of ${zs.length} slices`);
             const batch = zs.slice(i, i + 8).map((z) => {
-              const lb = letterbox(ctSlice(vol, z), LIVER);
+              const full = ctSlice(vol, z);
+              const lb = letterbox(full, LIVER);
               scale = lb.lb.scale;
-              return lb.pixels;
+              return { pixels: lb.pixels, full, lb: lb.lb };
             });
             const out = await liverBatch(batch, thr);
             out.forEach((c, k) => (stack[zs[i + k]] = c));

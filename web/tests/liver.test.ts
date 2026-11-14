@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { combine, LIVER, liverBox, stage2Input, TUM, uncrop } from '../src/lib/organs';
+import { combine, fullBox, LIVER, liverBox, stage2Input, TUM, uncrop } from '../src/lib/organs';
+import type { Letterbox } from '../src/lib/screen';
 
 // Produced by ml/qihgnn/screen/liver_cascade.py (liver_box, stage2_input, uncrop, combine) on the same synthetic inputs.
 const fixtures = JSON.parse(readFileSync(new URL('./liver.fixtures.json', import.meta.url), 'utf8')) as {
-  cy: number; cx: number; ry: number; rx: number; k: number; box: [number, number, number];
+  cy: number; cx: number; ry: number; rx: number; k: number; H: number; W: number; lb: { scale: number; top: number; left: number } | null;
+  box: [number, number, number]; fbox: [number, number, number];
   in_sum: number; in_at: number[]; un_sum: number; un_at: number[]; counts: number[]; tum_first: number; tum_last: number;
 }[];
 
@@ -15,18 +17,21 @@ test('liver stage 2: crop box, resize, uncrop and clean-up match Python', () => 
   for (const f of fixtures) {
     const N = LIVER;
     const s1 = new Uint8Array(N * N);
-    const img = new Uint8Array(N * N);
     for (let y = 0; y < N; y++) {
       for (let x = 0; x < N; x++) {
         const i = y * N + x;
         if (((y - f.cy) / f.ry) ** 2 + ((x - f.cx) / f.rx) ** 2 <= 1) s1[i] = 1;
         if ((y - f.cy) ** 2 + (x - f.cx) ** 2 < 36) s1[i] = 2;
-        img[i] = (x * 7 + y * 13 + f.k * 5) % 256;
       }
     }
+    const full = { data: new Uint8Array(f.H * f.W), w: f.W, h: f.H };
+    for (let y = 0; y < f.H; y++) for (let x = 0; x < f.W; x++) full.data[y * f.W + x] = (x * 7 + y * 13 + f.k * 5) % 256;
+    const lb = f.lb ? ({ ...f.lb, h: 0, w: 0 } as Letterbox) : undefined;
     const box = liverBox(s1)!;
     assert.deepEqual([box.y0, box.x0, box.s], f.box);
-    const x = stage2Input(img, box);
+    const fb = fullBox(box, lb);
+    assert.deepEqual([fb.y0, fb.x0, fb.s], f.fbox);
+    const x = stage2Input(full, box, lb);
     assert.ok(Math.abs(x.reduce((a, b) => a + b, 0) - f.in_sum) < 0.05, 'input sum');
     IDX.forEach((i, j) => assert.ok(Math.abs(x[i] - f.in_at[j]) < 1e-5, `input at ${i}`));
     const prob = new Float32Array(TUM * TUM);

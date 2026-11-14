@@ -99,9 +99,19 @@ def crop(a: np.ndarray, box) -> np.ndarray:
     return out
 
 
-def stage2_input(img_u8: np.ndarray, box) -> np.ndarray:
-    """(TUM, TUM) float32 in [0, 1]."""
-    return resize_bilinear(crop(img_u8, box).astype(np.float32) / 255.0, TUM, TUM)
+def full_box(box, lb=None):
+    """A box on the 256 px grid mapped onto the original slice (letterbox scale and offsets undone)."""
+    if lb is None:
+        return box
+    y0, x0, s = box
+    sc = lb["scale"]
+    r = lambda v: int(np.floor(v + 0.5))
+    return r((y0 - lb["top"]) / sc), r((x0 - lb["left"]) / sc), max(1, r(s / sc))
+
+
+def stage2_input(img_u8: np.ndarray, box, lb=None) -> np.ndarray:
+    """(TUM, TUM) float32 in [0, 1], cropped from the original-resolution slice when lb (its letterbox) is given."""
+    return resize_bilinear(crop(img_u8, full_box(box, lb)).astype(np.float32) / 255.0, TUM, TUM)
 
 
 def uncrop(prob: np.ndarray, box, h: int = LIVER, w: int = LIVER) -> np.ndarray:
@@ -169,12 +179,12 @@ def hu_to_u8(hu: np.ndarray) -> np.ndarray:
     return np.floor(np.clip((hu - HU_LO) / (HU_HI - HU_LO), 0, 1) * 255 + 0.5).astype(np.uint8)
 
 
-def nifti_index(root: Path) -> Dict[int, Tuple[Path, Path]]:
-    """{volume number: (volume-N.nii, segmentation-N.nii)} from the original LiTS release."""
+def nifti_index(roots) -> Dict[int, Tuple[Path, Path]]:
+    """{volume number: (volume-N.nii, segmentation-N.nii)} from the original LiTS release (it may be split across folders)."""
     import re
 
     vols, segs = {}, {}
-    for p in root.rglob("*.nii*"):
+    for p in (q for r in roots for q in Path(r).rglob("*.nii*")):
         m = re.match(r"(volume|segmentation)-(\d+)\.nii(\.gz)?$", p.name)
         if m:
             (vols if m.group(1) == "volume" else segs)[int(m.group(2))] = p
@@ -212,13 +222,16 @@ def load_nifti(index, volumes: List[int], train: bool, rng: np.random.Generator,
             r = np.random.default_rng(int(rng.integers(1 << 30)) + v)
             neg = r.choice(neg, min(len(neg), max(2, len(pos) // 4)), replace=False) if len(neg) else neg
             zs = np.sort(np.concatenate([pos, neg]).astype(int))
-        imgs, msks, scale = [], [], 1.0
+        imgs, msks, fulls, lb = [], [], [], None
         for z in zs:
-            g, lb = letterbox(hu_to_u8(hu[z]), LIVER)
+            f = hu_to_u8(hu[z])
+            g, lb = letterbox(f, LIVER)
             imgs.append(g)
             msks.append(letterbox(seg[z], LIVER, order=0)[0])
-            scale = lb["scale"]
-        return v, (np.stack(imgs), np.stack(msks), (sx / scale, sy / scale, sz))
+            fulls.append(f)
+        full_m = seg[zs] if train else None
+        scale = lb["scale"]
+        return v, (np.stack(imgs), np.stack(msks), (sx / scale, sy / scale, sz), np.stack(fulls), full_m, lb)
 
     out = {}
     with ThreadPoolExecutor(workers) as pool:
@@ -256,7 +269,7 @@ def stage1(sess, imgs: np.ndarray, batch: int = 32) -> np.ndarray:
     return np.concatenate(outs) if outs else np.zeros((0, LIVER, LIVER), np.uint8)
 
 
-def tumour_dataset(imgs: np.ndarray, masks: np.ndarray, items: List[int], train: bool):
+def tumour_dataset(imgs: np.ndarray, masks: np.ndarray, items: List[int], train: bool, fulls=None, full_masks=None, lbs=None):
     import torch
     from torch.utils.data import Dataset
 
@@ -274,11 +287,18 @@ def tumour_dataset(imgs: np.ndarray, masks: np.ndarray, items: List[int], train:
                 j = max(2, s // 12)
                 y0 += int(rng.integers(-j, j + 1)); x0 += int(rng.integers(-j, j + 1))
             box = (y0, x0, s)
-            x = stage2_input(img, box)
-            y = (resize_nearest(crop(m, box), TUM, TUM) == 2).astype(np.int64)
+            if fulls is not None:  # crop the original-resolution slice and its mask
+                lb = lbs[i]
+                x = stage2_input(fulls[i], box, lb)
+                y = (resize_nearest(crop(full_masks[i], full_box(box, lb)), TUM, TUM) == 2).astype(np.int64)
+            else:
+                x = stage2_input(img, box)
+                y = (resize_nearest(crop(m, box), TUM, TUM) == 2).astype(np.int64)
             if train:
                 if rng.random() < 0.5:
                     x, y = x[:, ::-1], y[:, ::-1]
+                if rng.random() < 0.5:
+                    x, y = x[::-1], y[::-1]
                 gamma = float(np.exp(rng.uniform(-0.25, 0.25)))
                 x = np.clip((x ** gamma) * rng.uniform(0.9, 1.1) + rng.uniform(-0.04, 0.04), 0, 1)
                 x = x + rng.normal(0, 0.01, x.shape).astype(np.float32)
@@ -287,8 +307,9 @@ def tumour_dataset(imgs: np.ndarray, masks: np.ndarray, items: List[int], train:
     return DS()
 
 
-def run_stage2(net, imgs: np.ndarray, s1: np.ndarray, device: str, batch: int = 32) -> List[np.ndarray | None]:
-    """Tumour probability (256, 256) per slice where stage 1 found liver, else None."""
+def run_stage2(net, imgs: np.ndarray, s1: np.ndarray, device: str, batch: int = 32, fulls=None, lb=None) -> List[np.ndarray | None]:
+    """Tumour probability (256, 256) per slice where stage 1 found liver, else None. With fulls (original-resolution
+    slices) and lb (their letterbox), the crop is taken from the original slice."""
     import torch
 
     boxes = [liver_box(c >= 1) for c in s1]
@@ -298,7 +319,7 @@ def run_stage2(net, imgs: np.ndarray, s1: np.ndarray, device: str, batch: int = 
     with torch.no_grad():
         for k in range(0, len(idx), batch):
             ii = idx[k:k + batch]
-            x = np.stack([stage2_input(imgs[i], boxes[i]) for i in ii])[:, None]
+            x = np.stack([stage2_input(fulls[i], boxes[i], lb) if fulls is not None else stage2_input(imgs[i], boxes[i]) for i in ii])[:, None]
             p = torch.softmax(net(torch.from_numpy(x).to(device)), 1)[:, 1].float().cpu().numpy()
             for i, pi in zip(ii, p):
                 probs[i] = uncrop(pi, boxes[i])
@@ -346,14 +367,14 @@ def volume_rows(data, s1s, probs_all, thr: float) -> List[Dict]:
 # ============================================================================ main
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--nifti", default="", help="original LiTS release (volume-N.nii, segmentation-N.nii): trains both stages")
+    ap.add_argument("--nifti", default="", help="original LiTS release (volume-N.nii, segmentation-N.nii), comma-separated folders: trains both stages")
     ap.add_argument("--lits", default="", help="JPEG mirror of LiTS (used with --stage1 when --nifti is not given)")
     ap.add_argument("--stage1", default="", help="published liver.onnx, for the mirror route")
     ap.add_argument("--out", required=True)
     ap.add_argument("--probe", action="store_true")
-    ap.add_argument("--s1-epochs", type=int, default=20)
+    ap.add_argument("--s1-epochs", type=int, default=24)
     ap.add_argument("--s1-steps", type=int, default=400)
-    ap.add_argument("--epochs", type=int, default=24)
+    ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--steps", type=int, default=320)
     ap.add_argument("--base", type=int, default=24)
     a = ap.parse_args()
@@ -371,7 +392,7 @@ def main() -> None:
     NIFTI = bool(a.nifti)
 
     if NIFTI:
-        index = nifti_index(Path(a.nifti))
+        index = nifti_index([r for r in a.nifti.split(",") if r])
         n_slices = None
     else:
         index = lits_index(Path(a.lits))
@@ -389,6 +410,12 @@ def main() -> None:
     log("volumes loaded", {k: (len(d), sum(len(x[0]) for x in d.values())) for k, d in (("train", tr), ("val", va), ("test", te))})
     imgs = np.concatenate([d[0] for d in tr.values()])
     msks = np.concatenate([d[1] for d in tr.values()])
+    if NIFTI:  # original-resolution slices for stage 2 (volumes differ in size, so keep them as lists)
+        fulls = [f for d in tr.values() for f in d[3]]
+        full_masks = [m for d in tr.values() for m in d[4]]
+        lbs = [d[5] for d in tr.values() for _ in range(len(d[0]))]
+    else:
+        fulls = full_masks = lbs = None
 
     # ---- stage 1: liver (trained here on real CT; on the mirror route the published model is reused)
     s1_info = None
@@ -419,11 +446,11 @@ def main() -> None:
     has_tum = (msks == 2).reshape(len(msks), -1).sum(1) >= 1
     items = [int(i) for i in np.nonzero(has_liver)[0]] + [int(i) for i in np.nonzero(has_liver & has_tum)[0]]
     log("stage-2 training slices", int(has_liver.sum()), "with tumour", int((has_liver & has_tum).sum()))
-    ds = tumour_dataset(imgs, msks, items, True)
+    ds = tumour_dataset(imgs, msks, items, True, fulls, full_masks, lbs)
     va_s1 = {v: s1fn(d[0]) for v, d in va.items()}
 
     def val_score(net, thr=0.5):
-        probs = {v: run_stage2(net, d[0], va_s1[v], device) for v, d in va.items()}
+        probs = {v: run_stage2(net, d[0], va_s1[v], device, fulls=d[3] if NIFTI else None, lb=d[5] if NIFTI else None) for v, d in va.items()}
         rows = volume_rows(va, va_s1, probs, thr)
         return float(np.mean([r["dice_tumour"] for r in rows if r["dice_tumour"] is not None] or [0])), probs
 
@@ -453,7 +480,7 @@ def main() -> None:
 
     # ---- test patients, every slice
     te_s1 = {v: s1fn(d[0]) for v, d in te.items()}
-    te_probs = {v: run_stage2(net, d[0], te_s1[v], device) for v, d in te.items()}
+    te_probs = {v: run_stage2(net, d[0], te_s1[v], device, fulls=d[3] if NIFTI else None, lb=d[5] if NIFTI else None) for v, d in te.items()}
     rows = volume_rows(te, te_s1, te_probs, thr)
     sl = [x for r in rows for x in r["slices"]]
     det = binary_report([p for p, _ in sl], [y for _, y in sl], threshold=slice_px) if sl else None
@@ -471,7 +498,7 @@ def main() -> None:
     L = {
         "architecture": "Two stages: a 2D U-Net finds the liver (one CT slice in, abdominal window); a second U-Net looks only at a square around the liver and outlines tumours",
         "stage1": s1_info,
-        "stage2": {"input": TUM, "box_margin": BOX_MARGIN, "box_min": BOX_MIN, "parameters": count(net), "history": hist},
+        "stage2": {"input": TUM, "box_margin": BOX_MARGIN, "box_min": BOX_MIN, "full_resolution_crop": NIFTI, "parameters": count(net), "history": hist},
         "window_hu": [HU_LO, HU_HI],
         "tumour_threshold": thr, "tumour_threshold_val_dice": thr_scores, "min_tumour_px": MIN_TUMOUR_PX, "min_lesion_voxels": MIN_LESION_VOXELS,
         "slice_rule_tumour_px": int(slice_px),

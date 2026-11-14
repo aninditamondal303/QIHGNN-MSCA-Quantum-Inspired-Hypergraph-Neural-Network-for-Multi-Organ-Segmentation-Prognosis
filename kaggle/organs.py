@@ -200,11 +200,13 @@ def probe_nifti():
     """The original LiTS volumes: layout, voxel sizes, Hounsfield range, label values."""
     import numpy as np
 
-    root = find_input("liver-tumor-segmentation")
-    print("nifti root:", root)
+    roots = [r for r in (find_input("liver-tumor-segmentation"), find_input("liver-tumor-segmentation-part-2")) if r]
+    print("nifti roots:", roots)
+    root = roots[0]
     files = []
-    for cur, _, fs in os.walk(root):
-        files += [os.path.join(cur, f) for f in fs]
+    for r in roots:
+        for cur, _, fs in os.walk(r):
+            files += [os.path.join(cur, f) for f in fs]
     print("files:", len(files))
     exts = {}
     for f in files:
@@ -251,7 +253,7 @@ if MODE == "train":
     sh(f"{sys.executable} -c \"import torch; assert torch.cuda.is_available(), 'no GPU'; print(torch.cuda.get_device_name(0))\"")
 # The cervix model is published. This job trains both liver stages on the original LiTS CT volumes (real Hounsfield
 # units and voxel sizes); without them it falls back to the JPEG mirror plus the published stage-1 model.
-nifti = find_input("liver-tumor-segmentation")
+nifti = ",".join(r for r in (find_input("liver-tumor-segmentation"), find_input("liver-tumor-segmentation-part-2")) if r)
 probe_flag = "--probe" if MODE == "probe-train" else ""
 if nifti:
     sh(f"{sys.executable} -m pip install -q nibabel", check=False)

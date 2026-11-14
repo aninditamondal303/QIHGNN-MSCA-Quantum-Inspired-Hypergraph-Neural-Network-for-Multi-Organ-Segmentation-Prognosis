@@ -2,6 +2,7 @@
  "files": [
   "cases.json",
   "corpus.json",
+  "metrics.json",
   "training_history.json",
   "verification.json"
  ]

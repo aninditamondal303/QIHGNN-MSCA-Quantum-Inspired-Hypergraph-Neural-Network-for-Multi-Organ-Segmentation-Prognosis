@@ -197,10 +197,16 @@ The first liver run outlined the liver well (whole-scan Dice 0.93 on 25 held-out
 
 ### Research model (3D QIHGNN-MSCA)
 
-| | Status |
-|---|---|
-| Mathematics of the objective, parameter budget, attention cost, MPO compression | **Measured**, 9/9 checks passing (`results/verification.json`) |
-| Per-organ Dice, HD95, C-index, time-dependent AUC | Filled in by `qihgnn.evaluate` after the Kaggle GPU run |
+Held-out test patients (53 brain, 19 liver, 30 with survival data); 30 epochs each on one Kaggle T4. The baseline is the same network with the MPO layers, the hypergraph and multi-scale cross-attention removed, trained the same way.
+
+| Measure | QIHGNN-MSCA | Matched baseline |
+|---|---|---|
+| Brain lesion Dice / HD95 (voxels) | **0.877** ± 0.06 / 2.9 | 0.419 ± 0.19 / 34.6 |
+| Liver Dice / HD95 (voxels) | **0.791** ± 0.20 / 5.3 | 0.037 ± 0.02 / 75.2 |
+| Survival C-index | **0.714** | 0.661 |
+| Time-dependent AUC, 1 / 3 years | 0.786 / 0.778 | 0.705 / 0.889 |
+
+The mathematics of the objective, the parameter budget, attention cost and MPO compression are checked separately: 9/9 checks passing (`results/verification.json`). With 30 survival cases the C-index and AUC intervals are wide; the 3-year AUC favours the baseline.
 
 ## Website design notes
 

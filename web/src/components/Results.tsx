@@ -42,6 +42,8 @@ function HistoryChart({ history }: { history: TrainingHistory }) {
   );
 }
 
+const RUN_NAMES: Record<string, string> = { full: 'QIHGNN-MSCA', baseline: 'Matched baseline' };
+
 export function Results({ metrics, history, verification, loading }: { metrics: MetricsFile | null; history: TrainingHistory | null; verification: Verification | null; loading: boolean }) {
   const runs = metrics?.runs ?? [];
   const organs = Array.from(new Set(runs.flatMap((r) => Object.keys(r.segmentation))));
@@ -53,7 +55,9 @@ export function Results({ metrics, history, verification, loading }: { metrics: 
           n="06"
           id="results"
           title="Results, measured and not"
-          standfirst="Scores appear here only when the evaluation script has written them. Until a converged run and a matched baseline exist, segmentation and prognosis are marked not yet measured rather than estimated."
+          standfirst={runs.length
+            ? 'The 3D research network against a matched baseline trained the same way, on held-out test patients (53 brain, 19 liver, 30 with survival data). Dice: overlap with the expert outline (1 is perfect). HD95: boundary distance in voxels (lower is better).'
+            : 'Scores appear here only when the evaluation script has written them. Until a converged run and a matched baseline exist, segmentation and prognosis are marked not yet measured rather than estimated.'}
         />
         <div className="mt-14 grid grid-cols-12 gap-x-6 gap-y-12">
           <div className="col-span-12 lg:col-span-7">
@@ -68,7 +72,7 @@ export function Results({ metrics, history, verification, loading }: { metrics: 
                     <thead>
                       <tr className="border-b border-rule-strong text-muted">
                         <th className="py-2 pr-4 font-normal">Organ</th>
-                        {runs.map((r) => <th key={r.label} className="py-2 pr-4 font-normal">{r.label}<br /><span className="font-mono text-[0.68rem]">Dice / HD95</span></th>)}
+                        {runs.map((r) => <th key={r.label} className="py-2 pr-4 font-normal">{RUN_NAMES[r.label] ?? r.label}<br /><span className="font-mono text-[0.68rem]">Dice / HD95</span></th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -117,22 +121,36 @@ export function Results({ metrics, history, verification, loading }: { metrics: 
           </div>
 
           <div className="col-span-12 lg:col-span-5">
-            <h3 className="font-semibold">How the empty cells get filled</h3>
-            <ol className="mt-5 border-t border-rule">
-              {STEPS.map((s, i) => (
-                <li key={s.cmd} className="grid grid-cols-[1.75rem_1fr] gap-x-3 border-b border-rule py-3">
-                  <span className="font-mono text-small text-muted num">{i + 1}</span>
-                  <span>
-                    <code className="block break-words font-mono text-[0.75rem]">{s.cmd}</code>
-                    <span className="mt-1 block text-small text-muted">{s.what}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-6 text-small text-muted">
-              Already measured: the mathematics and the parameter budget, {verification?.all_passed ? 'all checks passing' : 'see section 04'}.
-              Step 1 runs from the repository root, the rest from the ml/ folder.
-            </p>
+            {runs.length ? (
+              <>
+                <h3 className="font-semibold">What this shows</h3>
+                <ul className="mt-5 space-y-4 border-t border-rule pt-5 text-small">
+                  <li>One 3D network learns brain lesions and the liver from datasets that each label only one organ. The marginal loss stops it being punished for organs a dataset left unlabelled.</li>
+                  <li>The baseline is the same network with the project’s three additions removed (MPO layers, the hypergraph and multi-scale cross-attention), trained on the same data for the same 30 epochs. The gap between the columns is what those additions contribute.</li>
+                  <li>The same network also ranks patients by survival risk (C-index: 0.5 is chance, 1 is perfect).</li>
+                  <li>Test patients were never used in training. Kidney, cervix and spleen have no 3D labels in the data, so those outputs are switched off.</li>
+                </ul>
+              </>
+            ) : (
+              <>
+                <h3 className="font-semibold">How the empty cells get filled</h3>
+                <ol className="mt-5 border-t border-rule">
+                  {STEPS.map((s, i) => (
+                    <li key={s.cmd} className="grid grid-cols-[1.75rem_1fr] gap-x-3 border-b border-rule py-3">
+                      <span className="font-mono text-small text-muted num">{i + 1}</span>
+                      <span>
+                        <code className="block break-words font-mono text-[0.75rem]">{s.cmd}</code>
+                        <span className="mt-1 block text-small text-muted">{s.what}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-6 text-small text-muted">
+                  Already measured: the mathematics and the parameter budget, {verification?.all_passed ? 'all checks passing' : 'see section 04'}.
+                  Step 1 runs from the repository root, the rest from the ml/ folder.
+                </p>
+              </>
+            )}
           </div>
         </div>
       </Container>

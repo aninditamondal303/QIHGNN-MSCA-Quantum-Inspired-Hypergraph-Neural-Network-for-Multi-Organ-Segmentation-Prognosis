@@ -97,7 +97,7 @@ if ($Job -eq "screen") {
     $sources += @("masoudnickparvar/brain-tumor-mri-dataset", "navoneel/brain-mri-images-for-brain-tumor-detection", "nikhilroxtomar/brain-tumor-segmentation")
 }
 if ($Job -eq "organs") {
-    $sources += @("andrewmvd/liver-tumor-segmentation")  # original LiTS CT volumes (NIfTI, Hounsfield units)
+    $sources += @("andrewmvd/liver-tumor-segmentation", "andrewmvd/liver-tumor-segmentation-part-2")  # original LiTS CT volumes (NIfTI, Hounsfield units)
 }
 $meta = [ordered]@{
     id                  = $kid
