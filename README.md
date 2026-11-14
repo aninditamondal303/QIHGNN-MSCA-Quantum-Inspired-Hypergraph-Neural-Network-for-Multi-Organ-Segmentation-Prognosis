@@ -191,9 +191,20 @@ Out-of-fold risk thirds separate clearly (log-rank p = 1.7e-06), but assigning B
 
 The data has cell and nucleus outlines but no diagnosis labels, so the tool measures; it does not grade the cells. Cells whose N:C ratio is above the 99th percentile of the training slides (0.24) are flagged for a cytologist to look at.
 
-### Liver CT
+### Liver CT (LiTS, 131 original CT scans; 25 held-out patients, every slice)
 
-The first liver run outlined the liver well (whole-scan Dice 0.93 on 25 held-out patients) but tumours poorly (mean Dice 0.26). The cause was in the data: the LiTS mirror stores its label masks as JPEG, and compression leaves hundreds of 1–2-pixel tumour specks along liver edges and vessels. The labels are now cleaned (tumour regions with no solid 3×3 block become liver), and a second network looks only at the liver for tumours (`python -m qihgnn.screen.liver_cascade`). The liver tool goes live with its measured accuracy when that run is published.
+Two networks in sequence: one finds the liver on each slice; the second looks only at a square around the liver, cropped from the scan at full resolution, and outlines tumours. Trained on the original CT volumes (Hounsfield units, real voxel sizes, lossless expert masks), split by patient.
+
+| Measure | Value |
+|---|---|
+| Liver Dice, whole scan | **0.950** (median 0.952) |
+| Liver volume against the expert | median error 3.4%, r = 0.989 |
+| Tumour Dice, whole scan | 0.422 (median 0.426; 22 patients with tumours) |
+| Lesions found | 81% (75 of 93); 93% of larger lesions, 75% of small ones |
+| False lesions per patient | mean 2.1, median 1 |
+| Liver slices: tumour present or not | sensitivity 63.8%, specificity 95.3%, AUC 0.809 (3,250 slices) |
+
+Weak spot: very large tumours can be badly under-measured (two test patients: 346 vs 69 cm³ and 266 vs 2 cm³), so tumour volume correlates with the expert at only r = 0.51. An earlier attempt on a JPEG copy of the same data reached tumour Dice 0.26; its masks were full of compression specks, which is why the original scans are used.
 
 ### Research model (3D QIHGNN-MSCA)
 

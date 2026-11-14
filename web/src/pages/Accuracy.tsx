@@ -227,7 +227,7 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
               </p>
             )}
             <p className="mt-3 text-small text-muted">
-              All {lv.patients_with_tumour} test patients have tumours (as do most LiTS patients), so a per-patient specificity cannot be measured; the slice-level figures above are the honest substitute.
+              {lv.patients_with_tumour} of the {lv.test_patients} test patients have tumours (as do most LiTS patients), too few tumour-free patients for a per-patient specificity; the slice-level figures above are the honest substitute. Very large tumours can be badly under-measured, which is why the tumour-volume correlation is modest.
               {lv.label_cleaning ? ` ${lv.label_cleaning}` : ''} Small lesions are the hard part: {pct(lv.lesions.recall_small, 0)} of the {lv.lesions.n_small} small ones were found. {lv.note} Thresholds were chosen on validation patients, never on the test set.
             </p>
           </Block>

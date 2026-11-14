@@ -169,6 +169,19 @@ try {
     assert.ok(n >= 20 && n <= 200, `cells measured ${n}`);
   });
 
+  await step('liver CT: a held-out CT scan is measured in the browser, close to the expert', async () => {
+    await page.goto(URL + 'analyse?type=liver', { waitUntil: 'networkidle' });
+    const published = await page.evaluate(async () => (await fetch('screen/liver_tumour.onnx', { method: 'HEAD' })).ok);
+    if (!published) return;
+    const idx = await page.evaluate(async () => (await fetch('screen/samples/organs_index.json')).json());
+    const vol = idx.find((s) => s.kind === 'liver-volume');
+    await page.locator('section', { hasText: 'held-out test image' }).getByRole('button', { name: /3D CT/ }).click();
+    await page.getByText(/possible lesions? outlined|No liver lesion outlined/).first().waitFor({ timeout: 240000 });
+    const txt = await page.locator('.print-report').innerText();
+    const liverCc = Number(txt.match(/Liver volume\s+([\d.]+)/i)[1]);
+    assert.ok(Math.abs(liverCc - vol.true_liver_cc) / vol.true_liver_cc < 0.1, `liver ${liverCc} vs expert ${vol.true_liver_cc}`);
+  });
+
   await step('no uncaught page errors', async () => {
     assert.deepEqual(errors, []);
   });

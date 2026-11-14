@@ -26,5 +26,34 @@
   "kind": "cervix",
   "source": "Cervical cytology (test slide of this project)",
   "nuclei_annotated": 27
+ },
+ {
+  "file": "liver_tumour_78_164.png",
+  "truth": "liver_tumour",
+  "kind": "liver",
+  "source": "LiTS (test patient of this project)",
+  "tumour_px": 191
+ },
+ {
+  "file": "liver_tumour_56_188.png",
+  "truth": "liver_tumour",
+  "kind": "liver",
+  "source": "LiTS (test patient of this project)",
+  "tumour_px": 1823
+ },
+ {
+  "file": "liver_no_tumour_2_400.png",
+  "truth": "liver_no_tumour",
+  "kind": "liver",
+  "source": "LiTS (test patient of this project)"
+ },
+ {
+  "truth": "liver_tumour",
+  "kind": "liver-volume",
+  "true_lesions": 2,
+  "file": "liver_ct_volume_53.nii.gz",
+  "source": "LiTS (test patient of this project with the median tumour Dice): liver slices only, in-plane resolution halved to keep the file small; Hounsfield units and voxel size kept",
+  "true_tumour_cc": 6.647000372886663,
+  "true_liver_cc": 1615.52165062832
  }
 ]
