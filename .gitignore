@@ -33,3 +33,5 @@ kaggle.log
 _to_delete/
 kaggle_build_screen/
 kaggle_build_organs/
+# copy of the published liver model, shipped to Kaggle as stage 1
+ml/qihgnn/screen/weights/

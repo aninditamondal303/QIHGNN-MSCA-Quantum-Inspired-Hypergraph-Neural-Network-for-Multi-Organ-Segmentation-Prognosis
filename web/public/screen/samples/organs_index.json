@@ -1,0 +1,30 @@
+[
+ {
+  "file": "pap_00006.jpg",
+  "truth": "pap_smear",
+  "kind": "cervix",
+  "source": "Cervical cytology (test slide of this project)",
+  "nuclei_annotated": 60
+ },
+ {
+  "file": "pap_00032.jpg",
+  "truth": "pap_smear",
+  "kind": "cervix",
+  "source": "Cervical cytology (test slide of this project)",
+  "nuclei_annotated": 76
+ },
+ {
+  "file": "pap_00034.jpg",
+  "truth": "pap_smear",
+  "kind": "cervix",
+  "source": "Cervical cytology (test slide of this project)",
+  "nuclei_annotated": 26
+ },
+ {
+  "file": "pap_00036.jpg",
+  "truth": "pap_smear",
+  "kind": "cervix",
+  "source": "Cervical cytology (test slide of this project)",
+  "nuclei_annotated": 27
+ }
+]

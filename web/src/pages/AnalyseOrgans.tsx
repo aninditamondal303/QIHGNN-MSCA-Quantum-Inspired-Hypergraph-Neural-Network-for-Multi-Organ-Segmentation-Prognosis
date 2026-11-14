@@ -79,12 +79,13 @@ interface Liver2D { kind: '2d'; name: string; gray: Gray; classes: Uint8Array; l
 interface Liver3D { kind: '3d'; name: string; vol: Volume; stack: Uint8Array[]; scale: number; liverCc: number; tumourCc: number; lesions: number[]; best: number }
 
 export function LiverTool() {
-  const { metrics, samples, ready, loading } = useOrgans();
+  const { metrics, samples, liverReady: ready, loading } = useOrgans();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<Liver2D | Liver3D | null>(null);
 
-  const run = useCallback(async (file: File) => {
+    const thr = metrics?.liver?.tumour_threshold ?? 0.5;
+const run = useCallback(async (file: File) => {
     setError(null);
     setRes(null);
     try {
@@ -103,7 +104,7 @@ export function LiverTool() {
               scale = lb.lb.scale;
               return lb.pixels;
             });
-            const out = await liverBatch(batch);
+            const out = await liverBatch(batch, thr);
             out.forEach((c, k) => (stack[zs[i + k]] = c));
           }
         };
@@ -134,7 +135,7 @@ export function LiverTool() {
       } else {
         setBusy('Outlining the liver');
         const gray = await fileToGray(file);
-        const r = await liverSlice(gray);
+        const r = await liverSlice(gray, thr);
         setRes({ kind: '2d', name: file.name, gray, ...r });
       }
     } catch (e) {
@@ -142,7 +143,7 @@ export function LiverTool() {
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [thr]);
 
   return (
     <>
@@ -171,7 +172,7 @@ function LiverHow() {
         <li><span className="font-medium">Outline.</span> Liver in blue, tumour in red, on every slice.</li>
         <li><span className="font-medium">Size.</span> On a 3D scan: liver and tumour volume in cm³ and tumour burden (tumour as a share of the liver).</li>
         <li><span className="font-medium">Lesions.</span> Separate tumours counted across slices.</li>
-        <li><span className="font-medium">Verdict.</span> Whether the scan shows a liver tumour, using the threshold validated on held-out patients.</li>
+        <li><span className="font-medium">Two stages.</span> One network finds the liver; a second looks only at the liver, at higher zoom, for tumours.</li>
       </ul>
       <Disclaimer />
     </div>
@@ -220,7 +221,7 @@ function LiverViewer({ res }: { res: Liver2D | Liver3D }) {
 
 function LiverReport({ res, metrics }: { res: Liver2D | Liver3D; metrics: OrganMetrics | null }) {
   const m = metrics?.liver;
-  const thr = m?.patient_threshold_burden ?? 0.002;
+  const minPx = m?.slice_rule_tumour_px ?? 30;
   let title: string;
   let body: string;
   let tone = 'border-cobalt';
@@ -229,24 +230,21 @@ function LiverReport({ res, metrics }: { res: Liver2D | Liver3D; metrics: OrganM
       title = 'No liver visible on this slice';
       body = 'Upload an axial slice through the upper abdomen, where the liver is.';
       tone = 'border-muted';
-    } else if (res.tumourPx >= 30) {
-      title = 'Tumour visible on this slice';
+    } else if (res.tumourPx >= minPx) {
+      title = 'Tumour outlined on this slice';
       body = `Tumour covers ${pct(res.tumourPx / res.liverPx)} of the liver on this slice. A single slice can miss tumours elsewhere: a whole CT scan is more reliable.`;
       tone = 'border-vermilion';
     } else {
-      title = 'No tumour visible on this slice';
-      body = 'Nothing on this slice was outlined as tumour. Tumours elsewhere in the liver would not show on a single slice.';
+      title = 'No tumour outlined on this slice';
+      body = 'Nothing on this slice was outlined as tumour. Very small lesions can be missed, and tumours elsewhere in the liver would not show on a single slice.';
     }
+  } else if (res.lesions.length) {
+    title = `${res.lesions.length} possible lesion${res.lesions.length > 1 ? 's' : ''} outlined`;
+    body = `Tumour makes up ${pct(res.tumourCc / Math.max(1e-9, res.liverCc))} of the outlined liver. Use the slice bar to see each one.`;
+    tone = 'border-vermilion';
   } else {
-    const burden = res.tumourCc / Math.max(1e-9, res.liverCc);
-    if (burden > thr && res.lesions.length) {
-      title = 'Liver tumour detected';
-      body = `${res.lesions.length} separate lesion${res.lesions.length > 1 ? 's' : ''} found across the scan.`;
-      tone = 'border-vermilion';
-    } else {
-      title = 'No liver tumour found';
-      body = 'The outlined tumour volume is below the level validated to separate patients with and without tumours.';
-    }
+    title = 'No liver lesion outlined';
+    body = 'No tumour region large enough to count as a lesion was outlined anywhere in the liver. Very small lesions can be missed.';
   }
   return (
     <div className="print-report">
@@ -269,8 +267,8 @@ function LiverReport({ res, metrics }: { res: Liver2D | Liver3D; metrics: OrganM
       )}
       {m && (
         <p className="mt-4 text-small text-muted">
-          On {m.test_patients} held-out patients the outline matched experts with Dice {m.volume_dice_liver.mean?.toFixed(2)} for the liver and {m.volume_dice_tumour.mean?.toFixed(2)} for tumours
-          {m.patient_detection && `; tumour detection per patient: sensitivity ${pct(m.patient_detection.sensitivity)}, specificity ${pct(m.patient_detection.specificity)}`}.
+          On {m.test_patients} held-out patients: liver outline Dice {m.volume_dice_liver.mean?.toFixed(2)}, tumour outline Dice {m.volume_dice_tumour.mean?.toFixed(2)};
+          {' '}{pct(m.lesions.recall_large, 0)} of larger lesions and {pct(m.lesions.recall_small, 0)} of small ones found, {m.lesions.false_per_patient.mean?.toFixed(1)} false lesions per patient on average.
           {res.kind === '3d' && ' Volumes use the voxel size stored in your file.'}
         </p>
       )}
@@ -283,7 +281,7 @@ function LiverReport({ res, metrics }: { res: Liver2D | Liver3D; metrics: OrganM
 interface CervixResult { name: string; rgba: Uint8ClampedArray; classes: Uint8Array; owner: Int32Array; cells: Cell[] }
 
 export function CervixTool() {
-  const { metrics, samples, ready, loading } = useOrgans();
+  const { metrics, samples, cervixReady: ready, loading } = useOrgans();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<CervixResult | null>(null);

@@ -96,6 +96,9 @@ $sources = @($dsId, "awsaf49/brats2020-training-data", "harshwardhanbhangale/lit
 if ($Job -eq "screen") {
     $sources += @("masoudnickparvar/brain-tumor-mri-dataset", "navoneel/brain-mri-images-for-brain-tumor-detection", "nikhilroxtomar/brain-tumor-segmentation")
 }
+if ($Job -eq "organs") {
+    $sources += @("andrewmvd/liver-tumor-segmentation")  # original LiTS CT volumes (NIfTI, Hounsfield units)
+}
 $meta = [ordered]@{
     id                  = $kid
     title               = $kid.Split("/")[1]

@@ -114,21 +114,26 @@ export const ci = (c: [number, number] | undefined) => (c ? `${(c[0] * 100).toFi
 export interface OrganMetrics {
   generated_at: string;
   probe: boolean;
-  liver_data?: { volumes: number; slices: number; splits: Record<string, number> };
+  liver_data?: { source?: string; volumes: number; slices: number | null; splits: Record<string, number> };
   liver?: {
     architecture: string;
-    parameters: number;
-    patient_threshold_burden: number;
+    stage2?: { input: number; parameters: number };
+    label_cleaning?: string;
+    tumour_threshold: number;
+    slice_rule_tumour_px: number;
     test_patients: number;
     patients_with_tumour: number;
-    slice_dice_liver: Summary;
-    slice_dice_tumour: Summary;
     volume_dice_liver: Summary;
     volume_dice_tumour: Summary;
-    patient_detection: Binary | null;
+    slice_detection: (Binary & { auc?: number }) | null;
+    lesions: { n: number; found: number; recall: number; recall_large: number; n_large: number; recall_small: number; n_small: number; false_per_patient: Summary };
     burden_pearson_r: number | null;
     burden_pairs: [number, number][];
     lesion_count_pairs: [number, number][];
+    liver_volume_error_pct?: Summary;
+    liver_volume_r?: number | null;
+    tumour_volume_error_cc?: Summary;
+    tumour_volume_r?: number | null;
     note: string;
   };
   cervix_data?: { images: number; slide_groups: number; splits: Record<string, number>; cells_annotated: number; nuclei_annotated: number };
@@ -147,13 +152,16 @@ export interface OrganMetrics {
     unusual_nc_threshold: number | null;
     note: string;
   };
-  export?: Record<'liver' | 'cervix', { file: string; bytes: number; max_abs_diff_vs_torch?: number }>;
+  export?: Partial<Record<'liver' | 'liver_tumour' | 'cervix', { file: string; bytes: number; max_abs_diff_vs_torch?: number }>>;
 }
 
 export interface OrganSample {
   file: string;
   truth: string;
   kind: 'liver' | 'liver-volume' | 'cervix';
+  true_tumour_px?: number;
+  true_liver_px?: number;
+  true_lesions?: number;
   source: string;
   nuclei_annotated?: number;
 }
@@ -162,7 +170,10 @@ export function useOrgans() {
   const metrics = useJson<OrganMetrics>('screen/organs_metrics.json');
   const samples = useJson<OrganSample[]>('screen/samples/organs_index.json');
   const ready = !!metrics.data && !metrics.data.probe && !!metrics.data.export;
-  return { metrics: metrics.data, samples: samples.data ?? [], loading: metrics.loading, ready };
+  // Each organ goes live on its own: a model is published only with its measured accuracy.
+  const liverReady = ready && !!metrics.data?.liver?.tumour_threshold && !!metrics.data?.export?.liver && !!metrics.data?.export?.liver_tumour;
+  const cervixReady = ready && !!metrics.data?.cervix && !!metrics.data?.export?.cervix;
+  return { metrics: metrics.data, samples: samples.data ?? [], loading: metrics.loading, ready, liverReady, cervixReady };
 }
 
 /** The 3D volume evaluation for the sequence that performed best (T2 in the published run). */

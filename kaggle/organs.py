@@ -1,7 +1,8 @@
-"""Kaggle kernel entry for the liver (CT) and cervix (colposcopy) models. kaggle_run.ps1 -Job organs.
+"""Kaggle kernel entry for the liver (CT) and cervix (cytology) models. kaggle_run.ps1 -Job organs.
 
 probe: CPU. Inspects what the two datasets actually contain (mask levels, array shapes, annotation labels).
-train: GPU. Trains, evaluates and exports both models (qihgnn.screen.organs).
+train: GPU. Trains, evaluates and exports the liver tumour stage (qihgnn.screen.liver_cascade); the first run
+       (qihgnn.screen.organs) produced the published cervix and liver models.
 """
 import glob
 import json
@@ -143,16 +144,119 @@ def inspect(lits, cerv):
         Image.open(best.replace("train_masks", "train_images")).save(f"{OUT}/lits_image_{v}.jpg")
 
 
+def diag_lits(lits):
+    """What do the tumour labels look like? Component sizes, boundary specks, JPEG quality, raw examples."""
+    import numpy as np
+    from PIL import Image
+
+    masks = sorted(glob.glob(f"{lits}/**/train_masks/**/*.jpg", recursive=True))
+    by_vol = {}
+    for p in masks:
+        v = int(os.path.basename(p).split("_slice_")[0].split("-")[1])
+        by_vol.setdefault(v, []).append(p)
+    os.makedirs(OUT, exist_ok=True)
+    with Image.open(masks[0]) as im:
+        print("mask jpeg quantization tables (first 16 of table 0):", list(im.quantization.get(0, []))[:16] if hasattr(im, "quantization") else None)
+    from scipy import ndimage
+    rows = []
+    for v in sorted(by_vol)[::11]:
+        ps = sorted(by_vol[v], key=lambda s: int(s.split("_slice_")[1].split(".")[0]))
+        arr = np.stack([np.asarray(Image.open(p).convert("L")) for p in ps])
+        vals = np.bincount(arr.ravel(), minlength=256)
+        t = arr >= 2
+        t[arr > 10] = False
+        lab3, n3 = ndimage.label(t)
+        sizes3 = ndimage.sum(t, lab3, index=np.arange(1, n3 + 1)) if n3 else np.array([])
+        # tumour pixels touching background (value 0) in-plane
+        bg = arr == 0
+        nb = np.zeros_like(bg)
+        nb[:, 1:] |= bg[:, :-1]; nb[:, :-1] |= bg[:, 1:]; nb[:, :, 1:] |= bg[:, :, :-1]; nb[:, :, :-1] |= bg[:, :, 1:]
+        touch = float((t & nb).sum() / max(1, t.sum()))
+        # after a 2D opening (3x3) and removing 3D components < 30 voxels
+        op = np.stack([ndimage.binary_opening(s, np.ones((3, 3))) for s in t])
+        lab_o, n_o = ndimage.label(op)
+        so = ndimage.sum(op, lab_o, index=np.arange(1, n_o + 1)) if n_o else np.array([])
+        r = {"volume": v, "slices": len(ps), "vals_0_5": [int(x) for x in vals[:6]], "vals_gt10": int(vals[11:].sum()),
+             "tumour_px": int(t.sum()), "liver_px": int((arr == 1).sum()), "comp3d": int(n3),
+             "comp3d_ge30": int((sizes3 >= 30).sum()), "comp3d_largest": [int(x) for x in sorted(sizes3)[-5:]],
+             "frac_touch_bg": round(touch, 3), "opened_px": int(op.sum()), "opened_comp_ge30": int((so >= 30).sum())}
+        rows.append(r)
+        print("DIAG", json.dumps(r), flush=True)
+        if len(rows) <= 4 and t.any():
+            k = int(np.argmax(t.sum((1, 2))))
+            Image.fromarray((arr[k].astype(np.int32) * 100).clip(0, 255).astype(np.uint8)).save(f"{OUT}/diag_mask_v{v}_s{k}.png")
+            Image.open(ps[k].replace("train_masks", "train_images")).save(f"{OUT}/diag_image_v{v}_s{k}.png")
+            # a slice with only a few tumour pixels
+            few = [i for i in range(len(arr)) if 0 < t[i].sum() < 40]
+            if few:
+                i = few[len(few) // 2]
+                Image.fromarray((arr[i].astype(np.int32) * 100).clip(0, 255).astype(np.uint8)).save(f"{OUT}/diag_fewmask_v{v}_s{i}.png")
+                Image.open(ps[i].replace("train_masks", "train_images")).save(f"{OUT}/diag_fewimage_v{v}_s{i}.png")
+            np.save(f"{OUT}/diag_raw_v{v}_s{k}.npy", arr[k])
+    json.dump(rows, open(f"{OUT}/diag_lits.json", "w"), indent=1)
+
+
+def probe_nifti():
+    """The original LiTS volumes: layout, voxel sizes, Hounsfield range, label values."""
+    import numpy as np
+
+    root = find_input("liver-tumor-segmentation")
+    print("nifti root:", root)
+    files = []
+    for cur, _, fs in os.walk(root):
+        files += [os.path.join(cur, f) for f in fs]
+    print("files:", len(files))
+    exts = {}
+    for f in files:
+        e = f.split(".", 1)[1] if "." in os.path.basename(f) else ""
+        exts[e] = exts.get(e, 0) + 1
+    print("extensions:", exts)
+    dirs = sorted({os.path.relpath(os.path.dirname(f), root) for f in files})
+    print("folders:", dirs[:30])
+    print("examples:", sorted(os.path.relpath(f, root) for f in files)[:12])
+    try:
+        import nibabel as nib
+    except ImportError:
+        sh(f"{sys.executable} -m pip install -q nibabel", check=False)
+        import nibabel as nib
+    vols = sorted([f for f in files if "volume" in os.path.basename(f).lower()], key=lambda f: int("".join(c for c in os.path.basename(f) if c.isdigit()) or 0))
+    segs = sorted([f for f in files if "segmentation" in os.path.basename(f).lower()], key=lambda f: int("".join(c for c in os.path.basename(f) if c.isdigit()) or 0))
+    print("volumes:", len(vols), "segmentations:", len(segs))
+    for f in vols[:2] + vols[-1:]:
+        im = nib.load(f)
+        h = im.header
+        a = np.asarray(im.dataobj)
+        print(os.path.basename(f), "shape", a.shape, "dtype", a.dtype, "pixdim", [round(float(x), 3) for x in h["pixdim"][1:4]],
+              "slope/inter", h["scl_slope"], h["scl_inter"], "min/max", float(a.min()), float(a.max()),
+              "axcodes", nib.aff2axcodes(im.affine))
+        sf = f.replace("volume", "segmentation")
+        cand = [s for s in segs if os.path.basename(s).replace("segmentation", "volume") == os.path.basename(f)]
+        if cand:
+            m = np.asarray(nib.load(cand[0]).dataobj)
+            print("   seg", os.path.basename(cand[0]), m.shape, m.dtype, "labels", np.unique(m)[:10], "tumour voxels", int((m == 2).sum()))
+    sizes = [os.path.getsize(f) for f in vols]
+    print("total volume bytes", sum(sizes))
+
+
 ML = restore_code()
 os.makedirs(OUT, exist_ok=True)
 sh(f"{sys.executable} -m pip install -q onnx onnxruntime", check=False)
 lits, cerv = find_input("lits-dataset"), find_input("cervical-cancer-segmentation")
 print("lits:", lits, "| cervical:", cerv)
 if MODE == "probe":
-    inspect(lits, cerv)
+    probe_nifti()
     print("\nORGANS PROBE OK")
     sys.exit(0)
 if MODE == "train":
     sh(f"{sys.executable} -c \"import torch; assert torch.cuda.is_available(), 'no GPU'; print(torch.cuda.get_device_name(0))\"")
-sh(f"{sys.executable} -m qihgnn.screen.organs --lits '{lits}' --cervix '{cerv}' --out {OUT} {'--probe' if MODE == 'probe-train' else ''}", cwd=ML)
+# The cervix model is published. This job trains both liver stages on the original LiTS CT volumes (real Hounsfield
+# units and voxel sizes); without them it falls back to the JPEG mirror plus the published stage-1 model.
+nifti = find_input("liver-tumor-segmentation")
+probe_flag = "--probe" if MODE == "probe-train" else ""
+if nifti:
+    sh(f"{sys.executable} -m pip install -q nibabel", check=False)
+    sh(f"{sys.executable} -m qihgnn.screen.liver_cascade --nifti '{nifti}' --out {OUT} {probe_flag}", cwd=ML)
+else:
+    stage1 = os.path.join(ML, "qihgnn", "screen", "weights", "liver_stage1.onnx")
+    sh(f"{sys.executable} -m qihgnn.screen.liver_cascade --lits '{lits}' --stage1 '{stage1}' --out {OUT} {probe_flag}", cwd=ML)
 print(f"\nORGANS {MODE.upper()} OK in {(time.time() - T0) / 60:.1f} min")

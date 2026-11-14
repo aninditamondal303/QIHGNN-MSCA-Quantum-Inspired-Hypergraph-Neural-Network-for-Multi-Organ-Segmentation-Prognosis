@@ -193,7 +193,7 @@ export function loadOrt(): Promise<Ort> {
   return ortPromise;
 }
 
-export function session(name: 'classifier' | 'segmenter' | 'liver' | 'cervix'): Promise<Session> {
+export function session(name: 'classifier' | 'segmenter' | 'liver' | 'liver_tumour' | 'cervix'): Promise<Session> {
   if (!sessions[name]) {
     sessions[name] = loadOrt().then((ort) => ort.InferenceSession.create(new URL(`screen/${name}.onnx`, document.baseURI).href, { executionProviders: ['wasm'] }));
   }

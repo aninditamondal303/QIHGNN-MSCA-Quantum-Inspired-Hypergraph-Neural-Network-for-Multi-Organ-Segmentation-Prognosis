@@ -30,7 +30,139 @@ export function ctSlice(vol: Volume, z: number): Gray {
   return { data, w: nx, h: ny };
 }
 
-export async function liverBatch(slices: Uint8Array[]): Promise<Uint8Array[]> {
+// Stage 2 (liver_cascade.py): a tumour network that sees only a square around the liver, resized to TUM px.
+export const TUM = 192;
+export const BOX_MARGIN = 8;
+export const BOX_MIN = 48;
+export const MIN_TUMOUR_PX = 8;
+
+export interface Box { y0: number; x0: number; s: number }
+
+/** Square box around the liver pixels (class >= 1) of a size x size map; null without liver. */
+export function liverBox(classes: Uint8Array, size = LIVER, margin = BOX_MARGIN, minSide = BOX_MIN): Box | null {
+  let y0 = size, y1 = -1, x0 = size, x1 = -1;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (classes[y * size + x] >= 1) {
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+      }
+    }
+  }
+  if (y1 < 0) return null;
+  y1 += 1;
+  x1 += 1;
+  const side = Math.max(Math.max(y1 - y0, x1 - x0) + 2 * margin, minSide);
+  const cy = Math.floor((y0 + y1) / 2);
+  const cx = Math.floor((x0 + x1) / 2);
+  return { y0: cy - Math.floor(side / 2), x0: cx - Math.floor(side / 2), s: side };
+}
+
+/** Half-pixel-centre bilinear resize with edge clamping (same formula as resize_bilinear in Python). */
+export function resizeBilinear(a: Float32Array, h: number, w: number, oh: number, ow: number): Float32Array {
+  const out = new Float32Array(oh * ow);
+  const sy = h / oh;
+  const sx = w / ow;
+  const x0s = new Int32Array(ow), x1s = new Int32Array(ow), wxs = new Float32Array(ow);
+  for (let x = 0; x < ow; x++) {
+    const fx = Math.min(w - 1, Math.max(0, (x + 0.5) * sx - 0.5));
+    x0s[x] = Math.floor(fx);
+    x1s[x] = Math.min(x0s[x] + 1, w - 1);
+    wxs[x] = fx - x0s[x];
+  }
+  for (let y = 0; y < oh; y++) {
+    const fy = Math.min(h - 1, Math.max(0, (y + 0.5) * sy - 0.5));
+    const y0 = Math.floor(fy);
+    const y1 = Math.min(y0 + 1, h - 1);
+    const wy = fy - y0;
+    for (let x = 0; x < ow; x++) {
+      const wx = wxs[x];
+      const top = a[y0 * w + x0s[x]] * (1 - wx) + a[y0 * w + x1s[x]] * wx;
+      const bot = a[y1 * w + x0s[x]] * (1 - wx) + a[y1 * w + x1s[x]] * wx;
+      out[y * ow + x] = top * (1 - wy) + bot * wy;
+    }
+  }
+  return out;
+}
+
+/** Crop (zero outside the slice), scale to [0, 1] and resize to TUM x TUM. */
+export function stage2Input(pixels: Uint8Array, box: Box, size = LIVER): Float32Array {
+  const { y0, x0, s } = box;
+  const c = new Float32Array(s * s);
+  for (let y = 0; y < s; y++) {
+    const sy = y0 + y;
+    if (sy < 0 || sy >= size) continue;
+    for (let x = 0; x < s; x++) {
+      const sx = x0 + x;
+      if (sx >= 0 && sx < size) c[y * s + x] = pixels[sy * size + sx] / 255;
+    }
+  }
+  return resizeBilinear(c, s, s, TUM, TUM);
+}
+
+/** Stage-2 probability (TUM x TUM) back onto the size x size slice; zero outside the box. */
+export function uncrop(prob: Float32Array, box: Box, size = LIVER): Float32Array {
+  const { y0, x0, s } = box;
+  const big = resizeBilinear(prob, TUM, TUM, s, s);
+  const out = new Float32Array(size * size);
+  for (let y = Math.max(0, y0); y < Math.min(size, y0 + s); y++) {
+    for (let x = Math.max(0, x0); x < Math.min(size, x0 + s); x++) out[y * size + x] = big[(y - y0) * s + (x - x0)];
+  }
+  return out;
+}
+
+/** Keep 8-connected components of mask with at least minPx pixels. */
+export function dropSmall(mask: Uint8Array, w: number, h: number, minPx = MIN_TUMOUR_PX): Uint8Array {
+  const out = new Uint8Array(mask.length);
+  const seen = new Uint8Array(mask.length);
+  const q = new Int32Array(mask.length);
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i] || seen[i]) continue;
+    let head = 0;
+    let tail = 0;
+    q[tail++] = i;
+    seen[i] = 1;
+    while (head < tail) {
+      const cur = q[head++];
+      const cy = Math.floor(cur / w);
+      const cx = cur - cy * w;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const ny = cy + dy;
+          const nx = cx + dx;
+          if ((dy || dx) && ny >= 0 && nx >= 0 && ny < h && nx < w) {
+            const n = ny * w + nx;
+            if (mask[n] && !seen[n]) {
+              seen[n] = 1;
+              q[tail++] = n;
+            }
+          }
+        }
+      }
+    }
+    if (tail >= minPx) for (let k = 0; k < tail; k++) out[q[k]] = 1;
+  }
+  return out;
+}
+
+/** Final map: liver where stage 1 says liver or tumour; tumour where stage 2 > thr inside that liver. */
+export function combine(stage1: Uint8Array, prob: Float32Array | null, thr: number, size = LIVER): Uint8Array {
+  const out = new Uint8Array(stage1.length);
+  const t = new Uint8Array(stage1.length);
+  for (let i = 0; i < stage1.length; i++) {
+    out[i] = stage1[i] >= 1 ? 1 : 0;
+    if (prob && out[i] && prob[i] > thr) t[i] = 1;
+  }
+  if (prob) {
+    const kept = dropSmall(t, size, size);
+    for (let i = 0; i < out.length; i++) if (kept[i]) out[i] = 2;
+  }
+  return out;
+}
+
+async function stage1Batch(slices: Uint8Array[]): Promise<Uint8Array[]> {
   const ort = await loadOrt();
   const s = await session('liver');
   const n = slices.length;
@@ -42,6 +174,25 @@ export async function liverBatch(slices: Uint8Array[]): Promise<Uint8Array[]> {
   const out = await s.run({ slice: new ort.Tensor('float32', x, [n, 1, LIVER, LIVER]) });
   const p = out.prob.data as Float32Array;
   return Array.from({ length: n }, (_, i) => argmax3(p, i * 3 * px, px));
+}
+
+/** Both stages on a batch of 256 x 256 letterboxed slices -> 0/1/2 maps. thr: tumour threshold chosen on validation patients. */
+export async function liverBatch(slices: Uint8Array[], thr: number): Promise<Uint8Array[]> {
+  const s1 = await stage1Batch(slices);
+  const boxes = s1.map((c) => liverBox(c));
+  const idx = boxes.map((b, i) => (b ? i : -1)).filter((i) => i >= 0);
+  const probs: (Float32Array | null)[] = slices.map(() => null);
+  if (idx.length) {
+    const ort = await loadOrt();
+    const s = await session('liver_tumour');
+    const tp = TUM * TUM;
+    const x = new Float32Array(idx.length * tp);
+    idx.forEach((i, k) => x.set(stage2Input(slices[i], boxes[i]!), k * tp));
+    const out = await s.run({ crop: new ort.Tensor('float32', x, [idx.length, 1, TUM, TUM]) });
+    const p = out.prob.data as Float32Array;
+    idx.forEach((i, k) => (probs[i] = uncrop(p.slice((k * 2 + 1) * tp, (k * 2 + 2) * tp), boxes[i]!)));
+  }
+  return s1.map((c, i) => combine(c, probs[i], thr));
 }
 
 function argmax3(p: Float32Array, off: number, px: number): Uint8Array {
@@ -62,9 +213,9 @@ export interface LiverSlice {
   tumourPx: number;
 }
 
-export async function liverSlice(g: Gray): Promise<LiverSlice> {
+export async function liverSlice(g: Gray, thr: number): Promise<LiverSlice> {
   const { pixels, lb } = letterbox(g, LIVER);
-  const [classes] = await liverBatch([pixels]);
+  const [classes] = await liverBatch([pixels], thr);
   let l = 0;
   let t = 0;
   for (const v of classes) {

@@ -180,9 +180,20 @@ All figures are on held-out data: patients (BraTS), CT volumes, slides, or near-
 
 Out-of-fold risk thirds separate clearly (log-rank p = 1.7e-06), but assigning BraTS survival classes is no better than the majority class (37.9% vs 37.9%). The tool therefore reports a risk ranking and a survival curve with its bootstrap band, not a predicted survival class.
 
-### Liver CT and Pap smear
+### Pap smear cytology (686 images from 524 slides, 100 held-out images from unseen slides)
 
-Liver tumour and cervical cytology models are trained with `python -m qihgnn.screen.organs`; their measured results appear on the site's Accuracy page and in `web/public/screen/organs_metrics.json` once published.
+| Measure | Value |
+|---|---|
+| Nucleus outline Dice | **0.751** (median 0.771) |
+| Cell outline Dice | **0.877** (median 0.886) |
+| Nuclei per image, error against the expert count | median 5 (mean 7.0), r = 0.904 |
+| Median nucleus-to-cytoplasm ratio per image, error | median 0.004, r = 0.928 |
+
+The data has cell and nucleus outlines but no diagnosis labels, so the tool measures; it does not grade a smear. Cells whose N:C ratio is above the 99th percentile of the training slides (0.24) are flagged for a cytologist to look at.
+
+### Liver CT
+
+The first liver run outlined the liver well (whole-scan Dice 0.93 on 25 held-out patients) but tumours poorly (mean Dice 0.26). The cause was in the data: the LiTS mirror stores its label masks as JPEG, and compression leaves hundreds of 1–2-pixel tumour specks along liver edges and vessels. The labels are now cleaned (tumour regions with no solid 3×3 block become liver), and a second network looks only at the liver for tumours (`python -m qihgnn.screen.liver_cascade`). The liver tool goes live with its measured accuracy when that run is published.
 
 ### Research model (3D QIHGNN-MSCA)
 

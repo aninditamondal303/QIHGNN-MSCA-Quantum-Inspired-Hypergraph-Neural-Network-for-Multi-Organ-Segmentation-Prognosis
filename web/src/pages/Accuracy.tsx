@@ -103,8 +103,8 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
   useTitle('Accuracy');
   const { metrics, ready } = useScreen();
   const organs = useOrgans();
-  const lv = organs.ready ? organs.metrics?.liver : undefined;
-  const cx = organs.ready ? organs.metrics?.cervix : undefined;
+  const lv = organs.liverReady ? organs.metrics?.liver : undefined;
+  const cx = organs.cervixReady ? organs.metrics?.cervix : undefined;
   const t = metrics?.classifier?.test;
   const ext = metrics?.classifier?.external_test;
   const seg = metrics?.segmenter;
@@ -206,19 +206,29 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
           </>
         )}
         {lv && (
-          <Block id="liver" title="Liver CT" lead={`${lv.architecture}. ${organs.metrics!.liver_data?.volumes} LiTS patients, split per patient; ${lv.test_patients} held out for testing (${lv.patients_with_tumour} with tumours).`}>
+          <Block id="liver" title="Liver CT" lead={`${lv.architecture}. ${organs.metrics!.liver_data?.volumes} LiTS patients${organs.metrics!.liver_data?.source?.includes('original') ? ' (original CT scans, Hounsfield units)' : ''}, split per patient; ${lv.test_patients} held out for testing, every slice of their scans.`}>
             <div className="grid gap-px bg-rule sm:grid-cols-2 lg:grid-cols-4">
-              <Card k="Liver Dice, whole scan" v={lv.volume_dice_liver.mean?.toFixed(3) ?? '—'} />
-              <Card k="Tumour Dice, whole scan" v={lv.volume_dice_tumour.mean?.toFixed(3) ?? '—'} />
-              <Card k="Patients with tumour found" v={pct(lv.patient_detection?.sensitivity)} sub={lv.patient_detection ? ci(lv.patient_detection.sensitivity_ci) : ''} />
-              <Card k="Tumour-free patients cleared" v={pct(lv.patient_detection?.specificity)} sub={lv.patient_detection ? `${lv.patient_detection.tn + lv.patient_detection.fp} patients, ${ci(lv.patient_detection.specificity_ci)}` : ''} />
+              <Card k="Liver Dice, whole scan" v={lv.volume_dice_liver.mean?.toFixed(3) ?? '—'} sub={`median ${lv.volume_dice_liver.median?.toFixed(3)}`} />
+              <Card k="Tumour Dice, whole scan" v={lv.volume_dice_tumour.mean?.toFixed(3) ?? '—'} sub={`median ${lv.volume_dice_tumour.median?.toFixed(3)}`} />
+              <Card k="Lesions found" v={pct(lv.lesions.recall, 0)} sub={`${lv.lesions.found} of ${lv.lesions.n}; larger ones ${pct(lv.lesions.recall_large, 0)}`} />
+              <Card k="False lesions per patient" v={lv.lesions.false_per_patient.mean?.toFixed(1) ?? '—'} sub={`median ${lv.lesions.false_per_patient.median?.toFixed(0)}`} />
             </div>
-            <p className="mt-4 text-small">
-              Per slice: liver Dice {lv.slice_dice_liver.mean?.toFixed(3)} (n {lv.slice_dice_liver.n}), tumour Dice {lv.slice_dice_tumour.mean?.toFixed(3)} (n {lv.slice_dice_tumour.n}).
-              Tumour burden (tumour as a share of the liver) estimated against expert: r = {lv.burden_pearson_r?.toFixed(3)}.
-            </p>
+            {lv.slice_detection && (
+              <p className="mt-4 text-small">
+                Slices through the liver, tumour or not ({lv.slice_detection.n} slices): sensitivity {pct(lv.slice_detection.sensitivity)}, specificity {pct(lv.slice_detection.specificity)}
+                {lv.slice_detection.auc != null && `, AUC ${lv.slice_detection.auc.toFixed(3)}`}.
+                {lv.burden_pearson_r != null && ` Tumour burden (tumour as a share of the liver) against expert: r = ${lv.burden_pearson_r.toFixed(3)}.`}
+              </p>
+            )}
+            {lv.liver_volume_error_pct && (
+              <p className="mt-3 text-small">
+                Volumes, using each scan's own voxel size: liver volume within {lv.liver_volume_error_pct.median?.toFixed(1)}% of the expert's (median{lv.liver_volume_r != null ? `, r = ${lv.liver_volume_r.toFixed(3)}` : ''});
+                {' '}tumour volume off by a median {lv.tumour_volume_error_cc?.median?.toFixed(1)} cm³{lv.tumour_volume_r != null ? ` (r = ${lv.tumour_volume_r.toFixed(3)})` : ''}.
+              </p>
+            )}
             <p className="mt-3 text-small text-muted">
-              Most LiTS patients have tumours, so the tumour-free group is small and its interval wide. {lv.note} The patient-level threshold was chosen on validation patients, not on the test set.
+              All {lv.patients_with_tumour} test patients have tumours (as do most LiTS patients), so a per-patient specificity cannot be measured; the slice-level figures above are the honest substitute.
+              {lv.label_cleaning ? ` ${lv.label_cleaning}` : ''} Small lesions are the hard part: {pct(lv.lesions.recall_small, 0)} of the {lv.lesions.n_small} small ones were found. {lv.note} Thresholds were chosen on validation patients, never on the test set.
             </p>
           </Block>
         )}

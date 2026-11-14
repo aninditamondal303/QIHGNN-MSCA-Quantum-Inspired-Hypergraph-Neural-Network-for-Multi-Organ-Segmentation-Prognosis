@@ -24,7 +24,7 @@ export function Footer({ verification }: { verification: Verification | null }) 
               <span className="display text-[1.35rem]">QIHGNN-MSCA</span>
             </Link>
             <p className="mt-4 max-w-[46ch] text-small text-muted">
-              Brain tumour detection, outlining and prognosis in the browser, with its accuracy measured in the open.
+              Brain tumour detection and prognosis, liver CT and Pap smear analysis in the browser, with accuracy measured in the open.
             </p>
             <p className="mt-6 text-small">A project by <span className="font-medium">Anindita Mondal</span>.</p>
           </div>
