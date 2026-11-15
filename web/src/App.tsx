@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Header } from './components/chrome';
 import { Footer } from './components/Footer';
 import { useApiHealth, useJson } from './lib/data';
-import { useRoute } from './lib/router';
+import { currentPath, useRoute } from './lib/router';
 import type { CasesFile, CorpusFile, MetricsFile, TrainingHistory, Verification } from './lib/types';
 import { About } from './pages/About';
 import { Accuracy } from './pages/Accuracy';
@@ -25,21 +25,10 @@ export function App() {
   const metrics = useJson<MetricsFile>(manifest.loading ? null : has('metrics.json'));
   const history = useJson<TrainingHistory>(manifest.loading ? null : has('training_history.json'));
 
-  // The intro plays at the site root once per visit (or with ?intro); deep links go straight to their page.
-  const [entered, setEntered] = useState(() => {
-    if (new URLSearchParams(window.location.search).has('intro')) return false;
-    try {
-      return sessionStorage.getItem('qihgnn-entered') === '1';
-    } catch {
-      return false;
-    }
-  });
+  // The intro plays every time the site is opened at its root (or with ?intro). Moving between pages inside the site
+  // does not replay it; the logo and the header "Intro" button bring it back on purpose.
+  const [entered, setEntered] = useState(() => !(currentPath() === '/' || new URLSearchParams(window.location.search).has('intro')));
   const enter = () => {
-    try {
-      sessionStorage.setItem('qihgnn-entered', '1');
-    } catch {
-      /* storage unavailable: the intro simply shows again next time */
-    }
     if (window.location.search) window.history.replaceState({}, '', window.location.pathname);
     setEntered(true);
     window.scrollTo({ top: 0 });

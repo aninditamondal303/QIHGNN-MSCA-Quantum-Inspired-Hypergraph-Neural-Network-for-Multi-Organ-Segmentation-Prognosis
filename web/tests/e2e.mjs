@@ -48,10 +48,12 @@ try {
     await page.locator('h1', { hasText: /See it/i }).waitFor();
   });
 
-  await step('intro: shown once per visit, replayed with ?intro, deep links skip it', async () => {
-    await page.goto(URL, { waitUntil: 'networkidle' });
+  await step('intro: plays whenever the site is opened, not when moving between pages; deep links skip it', async () => {
+    await page.getByRole('link', { name: 'About', exact: true }).first().click();
+    await page.getByRole('link', { name: 'Home', exact: true }).first().click();
+    await page.locator('h1', { hasText: /See it/i }).waitFor();
     assert.equal(await page.getByRole('dialog', { name: 'Introduction' }).count(), 0);
-    await page.goto(URL + '?intro', { waitUntil: 'networkidle' });
+    await page.goto(URL, { waitUntil: 'networkidle' });
     await page.getByRole('dialog', { name: 'Introduction' }).waitFor();
     await page.keyboard.press('Escape');
     await page.locator('h1', { hasText: /See it/i }).waitFor();
