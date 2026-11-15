@@ -1,4 +1,3 @@
-import { LuArrowUpRight } from 'react-icons/lu';
 import { BUILD, VERSION } from '../lib/build';
 import { Link, openIntro, ROUTES } from '../lib/router';
 import type { Verification } from '../lib/types';
@@ -39,9 +38,6 @@ export function Footer({ verification }: { verification: Verification | null }) 
                 <li><Link to="/about#limitations" className="no-underline hover:underline">Intended use and limitations</Link></li>
                 <li><Link to="/data" className="no-underline hover:underline">Privacy</Link></li>
                 <li><button type="button" onClick={openIntro} className="text-left hover:underline">Replay the intro</button></li>
-                {BUILD.repo && (
-                  <li><a href={BUILD.repo} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 no-underline hover:underline">Source code<LuArrowUpRight className="size-3.5" aria-hidden="true" /></a></li>
-                )}
               </ul>
             </Col>
             <Col title="Build">

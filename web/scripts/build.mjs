@@ -56,7 +56,7 @@ function hash(text) {
 }
 
 export const esbuildOptions = (dev) => ({
-  entryPoints: { app: join(SRC, 'main.tsx') },
+  entryPoints: { app: join(SRC, 'main.tsx'), infer: join(SRC, 'workers', 'infer.ts') },
   bundle: true,
   outdir: join(DIST, 'assets'),
   format: 'esm',

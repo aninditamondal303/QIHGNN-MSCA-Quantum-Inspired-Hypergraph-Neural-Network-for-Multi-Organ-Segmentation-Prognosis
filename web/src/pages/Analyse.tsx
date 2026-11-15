@@ -4,7 +4,7 @@ import { Container, PageHead } from '../components/chrome';
 import { CervixTool, LiverTool } from './AnalyseOrgans';
 import { Link, useTitle } from '../lib/router';
 import {
-  CLASS_LABEL, CLASSES, classify, fileToGray, predictSurvival, readNifti, SEG_SIZE, segment, segmentBatch, survivalDesign, tumourProbability,
+  CLASS_LABEL, CLASSES, classify, fileToGray, predictSurvival, readNifti, SEG_SIZE, segment, segmentBatch, survivalDesign, tumourProbability, yieldToBrowser,
   verdict, volumeSlice, letterbox, type Classification, type Gray, type Resection, type Segmentation, type SurvivalModel, type Verdict, type Volume,
 } from '../lib/screen';
 import { best3d, pct, useScreen, type Sample, type ScreenMetrics } from '../lib/screenMetrics';
@@ -113,9 +113,11 @@ function BrainTool() {
         const probs: Float32Array[] = [];
         const areas: number[] = [];
         let scale = 1;
-        for (let z = 0; z < vol.nz; z += 8) {
+        const B = 4;
+        for (let z = 0; z < vol.nz; z += B) {
+          await yieldToBrowser();
           const batch: Uint8Array[] = [];
-          for (let k = z; k < Math.min(vol.nz, z + 8); k++) {
+          for (let k = z; k < Math.min(vol.nz, z + B); k++) {
             const lb = letterbox(volumeSlice(vol, k), SEG_SIZE);
             scale = lb.lb.scale;
             batch.push(lb.pixels);
@@ -127,7 +129,7 @@ function BrainTool() {
             for (let i = 0; i < p.length; i++) if (p[i] > 0.5) a++;
             areas.push(a);
           }
-          setProgress(Math.min(1, (z + 8) / vol.nz));
+          setProgress(Math.min(1, (z + B) / vol.nz));
         }
         const best = areas.indexOf(Math.max(...areas));
         // Voxel volume after letterboxing: in-plane spacing grows by 1/scale; slice thickness is unchanged.
@@ -255,7 +257,7 @@ export function Samples({ samples, onPick, disabled }: { samples: Sample[]; onPi
           <li key={s.file}>
             <button type="button" disabled={disabled} onClick={() => onPick(s)} className="group block w-full text-left disabled:opacity-50">
               {s.kind === 'volume' ? (
-                <span className="film grid aspect-square place-items-center text-center font-mono text-[0.7rem] text-film-muted">3D scan<br />FLAIR</span>
+                <span className="film grid aspect-square place-items-center text-center font-mono text-[0.7rem] text-film-muted">3D scan<br />T2</span>
               ) : (
                 <img src={`screen/samples/${s.file}`} alt="" className="aspect-square w-full bg-film object-cover group-hover:opacity-80" loading="lazy" />
               )}

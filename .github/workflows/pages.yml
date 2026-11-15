@@ -29,7 +29,6 @@ jobs:
       - name: Build
         working-directory: web
         env:
-          REPO_URL: https://github.com/${{ github.repository }}
           # Pages serves the site from /<repo>/; every route and asset is resolved against this base.
           BASE_PATH: /${{ github.event.repository.name }}/
         run: |

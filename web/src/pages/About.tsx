@@ -1,6 +1,4 @@
-import { LuArrowUpRight } from 'react-icons/lu';
 import { Container, PageHead } from '../components/chrome';
-import { BUILD } from '../lib/build';
 import { Link, useTitle } from '../lib/router';
 
 const DIFFERENT = [
@@ -89,7 +87,6 @@ export function About() {
             <p className="mt-8 flex flex-wrap gap-6">
               <Link to="/how-it-works">How it works</Link>
               <Link to="/accuracy">Accuracy</Link>
-              {BUILD.repo && <a href={BUILD.repo} target="_blank" rel="noreferrer" className="link-underline inline-flex items-center gap-1">Source code<LuArrowUpRight className="size-3.5" aria-hidden="true" /></a>}
             </p>
           </div>
         </section>

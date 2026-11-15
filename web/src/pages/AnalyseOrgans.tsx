@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCircleAlert, LuLoader, LuPrinter, LuRotateCcw } from 'react-icons/lu';
 import { Link } from '../lib/router';
 import { cellsFromClasses, CERV_H, CERV_W, cervixClasses, cervixInput, ctSlice, LIVER, lesions3d, liverBatch, liverSlice, type Cell } from '../lib/organs';
-import { fileToGray, letterbox, readNifti, type Gray, type Letterbox, type Volume } from '../lib/screen';
+import { fileToGray, letterbox, readNifti, yieldToBrowser, type Gray, type Letterbox, type Volume } from '../lib/screen';
 import { pct, useOrgans, type OrganMetrics, type OrganSample } from '../lib/screenMetrics';
 import { Dropzone, isVolumeFile } from './Analyse';
 
@@ -97,9 +97,11 @@ const run = useCallback(async (file: File) => {
         const stack: Uint8Array[] = Array.from({ length: vol.nz }, () => new Uint8Array(LIVER * LIVER));
         let scale = 1;
         const runSlices = async (zs: number[], label: string) => {
-          for (let i = 0; i < zs.length; i += 8) {
-            setBusy(`${label}: ${Math.min(zs.length, i + 8)} of ${zs.length} slices`);
-            const batch = zs.slice(i, i + 8).map((z) => {
+          const B = 4;
+          for (let i = 0; i < zs.length; i += B) {
+            setBusy(`${label}: ${Math.min(zs.length, i + B)} of ${zs.length} slices`);
+            await yieldToBrowser();
+            const batch = zs.slice(i, i + B).map((z) => {
               const full = ctSlice(vol, z);
               const lb = letterbox(full, LIVER);
               scale = lb.lb.scale;

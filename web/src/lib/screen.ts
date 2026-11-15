@@ -1,3 +1,4 @@
+import { BUILD } from './build';
 /* In-browser screening: everything runs on this device through ONNX Runtime Web (WebAssembly).
    The preprocessing below mirrors ml/qihgnn/screen/common.py exactly; tests/screen.test.ts checks it. */
 
@@ -193,11 +194,79 @@ export function loadOrt(): Promise<Ort> {
   return ortPromise;
 }
 
-export function session(name: 'classifier' | 'segmenter' | 'liver' | 'liver_tumour' | 'cervix'): Promise<Session> {
+type ModelName = 'classifier' | 'segmenter' | 'liver' | 'liver_tumour' | 'cervix';
+type Feed = { data: Float32Array; dims: readonly number[] };
+/** What the call sites need from a session: run(feeds) -> outputs with .data. */
+export interface ModelRunner {
+  run(feeds: Record<string, Feed>): Promise<Record<string, { data: Float32Array; dims: readonly number[] }>>;
+}
+
+// Models run in a Web Worker so the page stays responsive; if a worker cannot start, they run on the page itself.
+let worker: Worker | null | undefined;
+let nextId = 1;
+const pending = new Map<number, { resolve: (v: Record<string, { data: Float32Array; dims: number[] }>) => void; reject: (e: Error) => void }>();
+
+function getWorker(): Worker | null {
+  if (worker !== undefined) return worker;
+  try {
+    worker = new Worker(new URL(`assets/infer.js?v=${encodeURIComponent(BUILD.time)}`, document.baseURI), { type: 'module' });
+    worker.onmessage = (e: MessageEvent<{ id: number; ok: boolean; out?: Record<string, { data: Float32Array; dims: number[] }>; error?: string }>) => {
+      const p = pending.get(e.data.id);
+      if (!p) return;
+      pending.delete(e.data.id);
+      if (e.data.ok && e.data.out) p.resolve(e.data.out);
+      else p.reject(new Error(e.data.error || 'inference failed'));
+    };
+    worker.onerror = () => {
+      // The worker could not load: fall back to the page thread for every waiting and future request.
+      worker = null;
+      for (const [, p] of pending) p.reject(new Error('worker-unavailable'));
+      pending.clear();
+    };
+  } catch {
+    worker = null;
+  }
+  return worker;
+}
+
+function directSession(name: ModelName): Promise<Session> {
   if (!sessions[name]) {
     sessions[name] = loadOrt().then((ort) => ort.InferenceSession.create(new URL(`screen/${name}.onnx`, document.baseURI).href, { executionProviders: ['wasm'] }));
   }
   return sessions[name];
+}
+
+async function runDirect(name: ModelName, feeds: Record<string, Feed>) {
+  const ort = await loadOrt();
+  const s = await directSession(name);
+  const inputs: Record<string, InstanceType<Ort['Tensor']>> = {};
+  for (const [k, f] of Object.entries(feeds)) inputs[k] = new ort.Tensor('float32', f.data, [...f.dims]);
+  const out = await s.run(inputs);
+  const res: Record<string, { data: Float32Array; dims: readonly number[] }> = {};
+  for (const [k, t] of Object.entries(out)) res[k] = { data: t.data as Float32Array, dims: t.dims };
+  return res;
+}
+
+export function session(name: ModelName): Promise<ModelRunner> {
+  return Promise.resolve({
+    run: async (feeds: Record<string, Feed>) => {
+      const w = getWorker();
+      if (w) {
+        const plain: Record<string, { data: Float32Array; dims: number[] }> = {};
+        for (const [k, f] of Object.entries(feeds)) plain[k] = { data: f.data, dims: [...f.dims] };
+        try {
+          return await new Promise<Record<string, { data: Float32Array; dims: number[] }>>((resolve, reject) => {
+            const id = nextId++;
+            pending.set(id, { resolve, reject });
+            w.postMessage({ id, base: new URL('.', document.baseURI).href, model: name, feeds: plain });
+          });
+        } catch (e) {
+          if ((e as Error).message !== 'worker-unavailable') throw e;
+        }
+      }
+      return runDirect(name, feeds);
+    },
+  });
 }
 
 export interface Classification {
@@ -217,6 +286,15 @@ export async function classify(g: Gray): Promise<Classification> {
   const out = await s.run({ image: new ort.Tensor('float32', x, [1, 1, CLS_SIZE, CLS_SIZE]) });
   const cams = out.cams.data as Float32Array;
   return { probs: Array.from(out.probs.data as Float32Array), cams, camSize: out.cams.dims[3] as number, lb, input: pixels };
+}
+
+/** Let the browser paint and handle input between inference batches. ONNX Runtime runs on the page's own thread, and
+    awaiting it does not by itself give the browser a turn, so long 3D jobs would otherwise freeze the page. */
+export function yieldToBrowser(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function' && document.visibilityState === 'visible') requestAnimationFrame(() => setTimeout(resolve, 0));
+    else setTimeout(resolve, 0);
+  });
 }
 
 export async function segmentBatch(slices: Uint8Array[]): Promise<Float32Array[]> {
