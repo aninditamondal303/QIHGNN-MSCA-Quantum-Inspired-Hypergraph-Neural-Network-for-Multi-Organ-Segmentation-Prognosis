@@ -11,6 +11,9 @@ const DATASETS = [
   { name: 'BraTS 2020', role: 'Outline, volume, prognosis; glioma slices for the tumour check', what: '369 pre-operative glioma MRI scans in four sequences with expert tumour segmentations; survival data for 236 patients.', href: 'https://www.kaggle.com/datasets/awsaf49/brats2020-training-data' },
   { name: 'Brain tumour segmentation (2D)', role: 'Outline on skull-on images', what: 'About 3,000 contrast-enhanced T1 slices with tumour masks.', href: 'https://www.kaggle.com/datasets/nikhilroxtomar/brain-tumor-segmentation' },
   { name: 'LiTS (2D slices)', role: 'Liver and liver-tumour outline; “not a brain MRI” examples; liver channel of the research model', what: '131 abdominal CT scans as slices, with liver and tumour labelled separately.', href: 'https://www.kaggle.com/datasets/harshwardhanbhangale/lits-dataset' },
+  { name: 'LiTS (original CT volumes)', role: 'Liver and liver-tumour outline, whole-scan verdict', what: '131 CT scans in Hounsfield units with liver and tumour labelled; the model the website runs is trained on these.', href: 'https://competitions.codalab.org/competitions/17094' },
+  { name: 'CHAOS', role: 'Tumour-free livers: training and the whole-scan specificity test', what: '40 abdominal CT scans of healthy livers from a second hospital; 20 with the liver outlined.', href: 'https://chaos.grand-challenge.org/' },
+  { name: 'SIPaKMeD', role: 'Cell grading', what: 'About 4,000 single cervical cells cut from stained slides, each graded by cytologists into one of five types.', href: 'https://doi.org/10.1109/ICIP.2018.8451588' },
   { name: 'Cervical cytology', role: 'Cell and nucleus outline, N:C ratio; “not a brain MRI” examples', what: '686 stained microscope images with about 34,000 cells and their nuclei outlined. No diagnosis labels.', href: 'https://www.kaggle.com/datasets/balajikartheek/cervical-cancer-segmentation' },
 ];
 

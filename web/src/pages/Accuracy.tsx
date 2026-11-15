@@ -105,6 +105,7 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
   const organs = useOrgans();
   const lv = organs.liverReady ? organs.metrics?.liver : undefined;
   const cx = organs.cervixReady ? organs.metrics?.cervix : undefined;
+  const cg = organs.cellsReady ? organs.metrics?.cells : undefined;
   const t = metrics?.classifier?.test;
   const ext = metrics?.classifier?.external_test;
   const seg = metrics?.segmenter;
@@ -226,8 +227,19 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
                 {' '}tumour volume off by a median {lv.tumour_volume_error_cc?.median?.toFixed(1)} cm³{lv.tumour_volume_r != null ? ` (r = ${lv.tumour_volume_r.toFixed(3)})` : ''}.
               </p>
             )}
+            {lv.patient_detection && (
+              <p className="mt-3 text-small">
+                Whole-scan verdict (&ldquo;tumour likely&rdquo; when the largest lesion reaches {lv.patient_detection.rule_largest_lesion_voxels} voxels, a size chosen on validation patients):
+                {' '}{lv.patient_detection.tp} of {lv.patient_detection.tp + lv.patient_detection.fn} patients with tumours flagged (sensitivity {pct(lv.patient_detection.sensitivity, 0)}),
+                {' '}{lv.patient_detection.tn} of {lv.patient_detection.tn + lv.patient_detection.fp} tumour-free scans cleared (specificity {pct(lv.patient_detection.specificity, 0)})
+                {lv.patient_detection.auc != null && `, AUC ${lv.patient_detection.auc.toFixed(3)}`}.
+                {' '}The tumour-free scans include healthy livers from the CHAOS challenge, a different hospital from LiTS.
+              </p>
+            )}
             <p className="mt-3 text-small text-muted">
-              {lv.patients_with_tumour} of the {lv.test_patients} test patients have tumours (as do most LiTS patients), too few tumour-free patients for a per-patient specificity; the slice-level figures above are the honest substitute. Very large tumours can be badly under-measured, which is why the tumour-volume correlation is modest.
+              {lv.patient_detection
+                ? `${lv.patients_with_tumour} of the ${lv.test_patients} LiTS test patients have tumours; the healthy CHAOS livers are what make a specificity measurable at all, and with this few tumour-free scans its confidence interval is wide.`
+                : `${lv.patients_with_tumour} of the ${lv.test_patients} test patients have tumours (as do most LiTS patients), too few tumour-free patients for a per-patient specificity; the slice-level figures above are the honest substitute.`} Very large tumours can be badly under-measured, which is why the tumour-volume correlation is modest.
               {lv.label_cleaning ? ` ${lv.label_cleaning}` : ''} Small lesions are the hard part: {pct(lv.lesions.recall_small, 0)} of the {lv.lesions.n_small} small ones were found. {lv.note} Thresholds were chosen on validation patients, never on the test set.
             </p>
           </Block>
@@ -242,6 +254,29 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
               <Card k="Median N:C, error" v={cx.median_nc_abs_error.median?.toFixed(3) ?? '—'} sub={cx.median_nc_pearson_r != null ? `r = ${cx.median_nc_pearson_r.toFixed(3)}` : ''} />
             </div>
             <p className="mt-4 text-small text-muted">{cx.note} The review threshold ({cx.unusual_nc_threshold?.toFixed(2)}) is the 99th percentile of N:C ratios over annotated cells in the training slides.</p>
+          </Block>
+        )}
+
+        {cg && (
+          <Block id="cell-grading" title="Cervical cell grading" lead={`EfficientNet-B0 on ${cg.data.cells.toLocaleString()} single cells graded by cytologists into five types (SIPaKMeD), split by source image; ${cg.test.n} cells held out.`}>
+            <div className="grid gap-px bg-rule sm:grid-cols-2 lg:grid-cols-4">
+              <Card k="Cell type, accuracy" v={pct(cg.test.accuracy)} sub={`95% CI ${pct(cg.test.accuracy_ci[0], 0)}–${pct(cg.test.accuracy_ci[1], 0)}`} />
+              <Card k="Abnormal cells flagged" v={pct(cg.test.abnormal.sensitivity)} sub="koilocytotic or dyskeratotic" />
+              <Card k="Other cells not flagged" v={pct(cg.test.abnormal.specificity)} />
+              <Card k="Abnormal vs other, AUC" v={cg.test.abnormal.auc != null ? cg.test.abnormal.auc.toFixed(3) : '—'} sub={`calibration error ${cg.test.ece.toFixed(3)}`} />
+            </div>
+            <table className="mt-4 w-full text-small">
+              <thead><tr className="border-b border-rule-strong text-left text-muted"><th className="py-1.5 font-normal">Cell type</th><th className="py-1.5 text-right font-normal">Recall</th></tr></thead>
+              <tbody>
+                {cg.classes.map((c) => (
+                  <tr key={c} className="border-b border-rule"><td className="py-1.5">{c.replace('_', ' / ').replace(/^./, (m) => m.toUpperCase())}</td><td className="num py-1.5 text-right">{cg.test.recall[c] != null ? pct(cg.test.recall[c]!) : '—'}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-4 text-small text-muted">
+              The flag threshold ({cg.flag_threshold.toFixed(2)}) was set on validation cells to catch at least 90% of abnormal ones. {cg.note} On the website each cell is cut out of your image
+              by the cell-outline model above, so a poorly separated cell gives the grader a worse crop than the hand-cut cells it was tested on.
+            </p>
           </Block>
         )}
 

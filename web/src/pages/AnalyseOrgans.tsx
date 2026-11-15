@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CompareCanvas } from '../components/Compare';
+import { useCallback, useMemo, useState } from 'react';
 import { LuCircleAlert, LuLoader, LuPrinter, LuRotateCcw } from 'react-icons/lu';
 import { Link } from '../lib/router';
-import { cellsFromClasses, CERV_H, CERV_W, cervixClasses, cervixInput, ctSlice, LIVER, lesions3d, liverBatch, liverSlice, type Cell } from '../lib/organs';
+import { CELL_CLASSES, CELL_GROUP, CELL_LABEL, cellsFromClasses, CERV_H, CERV_W, cervixClasses, cervixInput, ctSlice, gradeCells, LIVER, lesions3d, liverBatch, liverSlice, type Cell, type CellGrade } from '../lib/organs';
 import { fileToGray, letterbox, readNifti, yieldToBrowser, type Gray, type Letterbox, type Volume } from '../lib/screen';
 import { pct, useOrgans, type OrganMetrics, type OrganSample } from '../lib/screenMetrics';
 import { Dropzone, isVolumeFile } from './Analyse';
@@ -184,27 +185,24 @@ function LiverHow() {
 
 function LiverViewer({ res }: { res: Liver2D | Liver3D }) {
   const [z, setZ] = useState(res.kind === '3d' ? res.best : 0);
-  const [show, setShow] = useState(true);
-  const canvas = useRef<HTMLCanvasElement>(null);
   const view = useMemo(() => {
     if (res.kind === '2d') return { gray: res.gray, classes: res.classes, lb: res.lb };
     const gray = ctSlice(res.vol, z);
     return { gray, classes: res.stack[z], lb: letterbox(gray, LIVER).lb };
   }, [res, z]);
-  useEffect(() => {
-    const c = canvas.current!;
+  const paint = (c: HTMLCanvasElement, overlay: boolean) => {
     paintGray(c, view.gray);
-    if (show) paintClasses(c.getContext('2d')!, view.classes, LIVER, LIVER, view.lb, view.gray.w, view.gray.h, LIVER_COLOURS);
-  }, [view, show]);
+    if (overlay) paintClasses(c.getContext('2d')!, view.classes, LIVER, LIVER, view.lb, view.gray.w, view.gray.h, LIVER_COLOURS);
+  };
   const areas = res.kind === '3d' ? res.stack.map((c) => c.reduce((s, v) => s + (v === 2 ? 1 : 0), 0)) : [];
   return (
     <figure>
       <div className="film">
         <div className="flex items-center justify-between gap-3 border-b border-film-rule px-4 py-2.5">
           <span className="truncate font-mono text-small">{res.name}</span>
-          <button type="button" onClick={() => setShow((v) => !v)} className="meta px-2 py-1 text-film-muted hover:text-film-fg" aria-pressed={show}>{show ? 'Hide outline' : 'Show outline'}</button>
+          <span className="meta shrink-0 text-film-muted">Drag to compare</span>
         </div>
-        <canvas key={res.name} ref={canvas} className="develop-sweep block h-auto max-h-[70vh] w-full object-contain" aria-label="CT with liver and tumour outline" />
+        <CompareCanvas key={res.name} paint={paint} deps={[view]} className="block h-auto max-h-[70vh] w-full object-contain" label="CT with liver and tumour outline" />
         {res.kind === '3d' && (
           <div className="border-t border-film-rule px-4 py-3">
             <label className="flex items-center gap-3 text-small text-film-muted">
@@ -225,6 +223,7 @@ function LiverViewer({ res }: { res: Liver2D | Liver3D }) {
 function LiverReport({ res, metrics }: { res: Liver2D | Liver3D; metrics: OrganMetrics | null }) {
   const m = metrics?.liver;
   const minPx = m?.slice_rule_tumour_px ?? 30;
+  const pd = m?.patient_detection ?? null;
   let title: string;
   let body: string;
   let tone = 'border-cobalt';
@@ -241,6 +240,13 @@ function LiverReport({ res, metrics }: { res: Liver2D | Liver3D; metrics: OrganM
       title = 'No tumour outlined on this slice';
       body = 'Nothing on this slice was outlined as tumour. Very small lesions can be missed, and tumours elsewhere in the liver would not show on a single slice.';
     }
+  } else if (pd && res.lesions.length) {
+    const likely = res.lesions[0] >= pd.rule_largest_lesion_voxels;
+    title = likely ? 'Liver tumour likely' : `${res.lesions.length} small finding${res.lesions.length > 1 ? 's' : ''}, below the alert size`;
+    body = likely
+      ? `The largest lesion (${res.lesions[0]} voxels) is above the size that separated patients with and without tumours in validation. ${res.lesions.length} lesion${res.lesions.length > 1 ? 's' : ''} outlined; tumour makes up ${pct(res.tumourCc / Math.max(1e-9, res.liverCc))} of the liver.`
+      : `The largest outlined region (${res.lesions[0]} voxels) is smaller than ${pd.rule_largest_lesion_voxels} voxels, the size that best separated patients with and without tumours in validation. Regions this small are often false alarms, but small real lesions also look like this.`;
+    tone = likely ? 'border-vermilion' : 'border-[#ffb000]';
   } else if (res.lesions.length) {
     title = `${res.lesions.length} possible lesion${res.lesions.length > 1 ? 's' : ''} outlined`;
     body = `Tumour makes up ${pct(res.tumourCc / Math.max(1e-9, res.liverCc))} of the outlined liver. Use the slice bar to see each one.`;
@@ -275,16 +281,22 @@ function LiverReport({ res, metrics }: { res: Liver2D | Liver3D; metrics: OrganM
           {res.kind === '3d' && ' Volumes use the voxel size stored in your file.'}
         </p>
       )}
+      {res.kind === '3d' && pd && (
+        <p className="mt-2 text-small text-muted">
+          Whole-scan verdict on {pd.n} held-out scans{pd.tumour_free ? `, ${Object.values(pd.tumour_free).reduce((a, b) => a + b, 0)} of them tumour-free` : ''}:
+          {' '}{pct(pd.sensitivity, 0)} of patients with a tumour flagged, {pct(pd.specificity, 0)} of tumour-free patients correctly cleared.
+        </p>
+      )}
       <Disclaimer />
     </div>
   );
 }
 
 // ================================================================== cervix
-interface CervixResult { name: string; rgba: Uint8ClampedArray; classes: Uint8Array; owner: Int32Array; cells: Cell[] }
+interface CervixResult { name: string; rgba: Uint8ClampedArray; classes: Uint8Array; owner: Int32Array; cells: Cell[]; grades: CellGrade[] | null }
 
 export function CervixTool() {
-  const { metrics, samples, cervixReady: ready, loading } = useOrgans();
+  const { metrics, samples, cervixReady: ready, cellsReady, loading } = useOrgans();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<CervixResult | null>(null);
@@ -293,23 +305,30 @@ export function CervixTool() {
     setRes(null);
     try {
       setBusy('Outlining cells and nuclei');
-      const { rgb } = await cervixInput(file);
+      const { rgb, crop, bitmap } = await cervixInput(file);
       const classes = await cervixClasses(rgb);
       setBusy('Separating cells and measuring them');
       const { owner, cells } = cellsFromClasses(classes, CERV_W, CERV_H);
-      setRes({ name: file.name, rgba: rgb, classes, owner, cells });
+      let grades: CellGrade[] | null = null;
+      if (cellsReady && cells.length) {
+        setBusy(`Grading ${cells.length} cells`);
+        grades = await gradeCells(bitmap, crop, owner, cells);
+      }
+      bitmap.close();
+      setRes({ name: file.name, rgba: rgb, classes, owner, cells, grades });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [cellsReady]);
+  const flag = metrics?.cells?.flag_threshold ?? null;
   return (
     <>
       {!ready && !loading && <NotReady what="cytology" />}
       <div className="grid grid-cols-12 gap-x-6 gap-y-10">
         <div className="col-span-12 lg:col-span-7">
-          {res ? <CervixViewer res={res} threshold={metrics?.cervix?.unusual_nc_threshold ?? null} /> : <Dropzone onFile={run} disabled={!!busy || !ready} accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff" hint="A stained microscope image of cervical cells (JPG or PNG), ideally at around 10x to 20x magnification." />}
+          {res ? <CervixViewer res={res} threshold={metrics?.cervix?.unusual_nc_threshold ?? null} flag={flag} /> : <Dropzone onFile={run} disabled={!!busy || !ready} accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff" hint="A stained microscope image of cervical cells (JPG or PNG), ideally at around 10x to 20x magnification." />}
           {busy && <Busy text={busy} />}
           {error && <p className="mt-4 border-l-2 border-vermilion pl-3 text-small" role="alert">Could not analyse this file: {error}</p>}
           {res && <Actions onReset={() => setRes(null)} />}
@@ -324,8 +343,13 @@ export function CervixTool() {
                 <li><span className="font-medium">Counts.</span> Number of cells and nuclei in the image.</li>
                 <li><span className="font-medium">N:C ratio.</span> Nucleus-to-cytoplasm area ratio for each cell. Abnormal (dysplastic) cells typically have enlarged nuclei and a high ratio.</li>
                 <li><span className="font-medium">Cells to review.</span> Cells whose ratio is higher than 99% of the cells in the training slides are ringed.</li>
+                {cellsReady && <li><span className="font-medium">Cell type.</span> Each cell is graded into one of five types cytologists use (normal, benign or abnormal-looking), and abnormal-looking cells are flagged in red.</li>}
               </ul>
-              <p className="mt-6 text-small text-muted">The training data outlines cells but carries no diagnosis, so this tool measures; it does not classify the cells as normal or abnormal.</p>
+              <p className="mt-6 text-small text-muted">
+                {cellsReady
+                  ? 'Cell types come from a second model trained on cells graded by cytologists. It flags cells for review; it does not diagnose.'
+                  : 'The training data outlines cells but carries no diagnosis, so this tool measures; it does not classify the cells as normal or abnormal.'}
+              </p>
               <Disclaimer />
             </div>
           )}
@@ -335,11 +359,9 @@ export function CervixTool() {
   );
 }
 
-function CervixViewer({ res, threshold }: { res: CervixResult; threshold: number | null }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const [show, setShow] = useState(true);
-  useEffect(() => {
-    const c = canvas.current!;
+function CervixViewer({ res, threshold, flag }: { res: CervixResult; threshold: number | null; flag: number | null }) {
+  const flagged = new Set(flag !== null && res.grades ? res.grades.filter((g) => g.abnormal >= flag).map((g) => g.id) : []);
+  const paint = (c: HTMLCanvasElement, show: boolean) => {
     c.width = CERV_W;
     c.height = CERV_H;
     const ctx = c.getContext('2d')!;
@@ -361,28 +383,33 @@ function CervixViewer({ res, threshold }: { res: CervixResult; threshold: number
       }
     }
     ctx.putImageData(img, 0, 0);
-    if (threshold !== null) {
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#ffb000';
-      for (const cell of res.cells) {
-        if (cell.nc < threshold) continue;
-        const r = Math.sqrt((cell.nucleusPx + cell.cytoplasmPx) / Math.PI) + 6;
-        ctx.beginPath();
-        ctx.arc(cell.cx, cell.cy, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
+    for (const cell of res.cells) {
+      const isFlag = flagged.has(cell.id);
+      const isHigh = threshold !== null && cell.nc >= threshold;
+      if (!isFlag && !isHigh) continue;
+      const r = Math.sqrt((cell.nucleusPx + cell.cytoplasmPx) / Math.PI) + 6;
+      ctx.lineWidth = isFlag ? 3 : 2;
+      ctx.strokeStyle = isFlag ? '#ff2d55' : '#ffb000';
+      ctx.setLineDash(isFlag ? [] : [5, 3]);
+      ctx.beginPath();
+      ctx.arc(cell.cx, cell.cy, r, 0, Math.PI * 2);
+      ctx.stroke();
     }
-  }, [res, show, threshold]);
+    ctx.setLineDash([]);
+  };
   return (
     <figure>
       <div className="film">
         <div className="flex items-center justify-between gap-3 border-b border-film-rule px-4 py-2.5">
           <span className="truncate font-mono text-small">{res.name}</span>
-          <button type="button" onClick={() => setShow((v) => !v)} className="meta px-2 py-1 text-film-muted hover:text-film-fg" aria-pressed={show}>{show ? 'Hide outline' : 'Show outline'}</button>
+          <span className="meta shrink-0 text-film-muted">Drag to compare</span>
         </div>
-        <canvas key={res.name} ref={canvas} className="develop-sweep block h-auto w-full" aria-label="Cytology image with cells and nuclei outlined" />
+        <CompareCanvas key={res.name} paint={paint} deps={[res, threshold, flag]} className="block h-auto w-full" label="Cytology image with cells and nuclei outlined" />
       </div>
-      <figcaption className="mt-2 text-small text-muted">Blue lines: cell boundaries. Red: nuclei. Amber rings: cells with an unusually high nucleus-to-cytoplasm ratio.</figcaption>
+      <figcaption className="mt-2 text-small text-muted">
+        Blue lines: cell boundaries. Red fill: nuclei. Dashed amber rings: unusually high nucleus-to-cytoplasm ratio.
+        {res.grades && ' Solid red rings: cells the grading model calls abnormal-looking (koilocytotic or dyskeratotic).'}
+      </figcaption>
     </figure>
   );
 }
@@ -393,14 +420,31 @@ function CervixReport({ res, metrics }: { res: CervixResult; metrics: OrganMetri
   const ncs = res.cells.map((c) => c.nc).sort((a, b) => a - b);
   const median = ncs.length ? ncs[Math.floor(ncs.length / 2)] : null;
   const unusual = thr === null ? [] : res.cells.filter((c) => c.nc >= thr).sort((a, b) => b.nc - a.nc);
+  const cm = metrics?.cells;
+  const flag = cm?.flag_threshold ?? null;
+  const grades = res.grades;
+  const flagged = grades && flag !== null ? grades.filter((g) => g.abnormal >= flag) : [];
+  const groups = { normal: 0, benign: 0, abnormal: 0 };
+  const perType = CELL_CLASSES.map(() => 0);
+  for (const g of grades ?? []) {
+    groups[CELL_GROUP[CELL_CLASSES[g.top]]]++;
+    perType[g.top]++;
+  }
   const bins = 12;
   const maxNc = Math.max(1, ...ncs);
   const hist = Array.from({ length: bins }, (_, i) => ncs.filter((v) => v >= (i * maxNc) / bins && v < ((i + 1) * maxNc) / bins + (i === bins - 1 ? 1e-9 : 0)).length);
   return (
     <div className="print-report">
       <p className="meta text-muted">Report · {new Date().toLocaleString()} · {res.name}</p>
-      <section className={`mt-3 border-l-4 ${unusual.length ? 'border-[#ffb000]' : 'border-cobalt'} bg-raised p-5`}>
-        <h2 className="display text-h3">{res.cells.length} cells measured</h2>
+      <section className={`mt-3 border-l-4 ${flagged.length ? 'border-[#ff2d55]' : unusual.length ? 'border-[#ffb000]' : 'border-cobalt'} bg-raised p-5`}>
+        <h2 className="display text-h3">{grades ? (flagged.length ? `${flagged.length} abnormal-looking cell${flagged.length > 1 ? 's' : ''} of ${res.cells.length}` : `${res.cells.length} cells, none flagged`) : `${res.cells.length} cells measured`}</h2>
+        {grades && (
+          <p className="mt-2 text-small">
+            {flagged.length
+              ? 'The grading model says these cells look koilocytotic or dyskeratotic, the two abnormal types in its training set. A cytologist should review them.'
+              : 'The grading model found no cell that looks koilocytotic or dyskeratotic.'}
+          </p>
+        )}
         <p className="mt-2 text-small">
           {unusual.length
             ? `${unusual.length} cell${unusual.length > 1 ? 's have' : ' has'} a nucleus-to-cytoplasm ratio above ${thr!.toFixed(2)}, higher than 99% of cells in the training slides. Worth a closer look by a cytologist.`
@@ -411,6 +455,34 @@ function CervixReport({ res, metrics }: { res: CervixResult; metrics: OrganMetri
         <div className="bg-surface p-4"><dt className="text-small text-muted">Cells with a nucleus</dt><dd className="display num mt-1 text-h3">{res.cells.length}</dd></div>
         <div className="bg-surface p-4"><dt className="text-small text-muted">Median N:C ratio</dt><dd className="display num mt-1 text-h3">{median !== null ? median.toFixed(2) : '—'}</dd></div>
       </dl>
+      {grades && (
+        <section className="mt-6" aria-label="Cell types">
+          <h3 className="meta text-muted">Cell types</h3>
+          <div className="mt-2 flex h-3 overflow-hidden" aria-hidden="true">
+            <span className="bg-cobalt" style={{ width: `${(groups.normal / Math.max(1, grades.length)) * 100}%` }} />
+            <span className="bg-[#ffb000]" style={{ width: `${(groups.benign / Math.max(1, grades.length)) * 100}%` }} />
+            <span className="bg-[#ff2d55]" style={{ width: `${(groups.abnormal / Math.max(1, grades.length)) * 100}%` }} />
+          </div>
+          <table className="mt-3 w-full text-small">
+            <tbody>
+              {CELL_CLASSES.map((c, i) => (
+                <tr key={c} className="border-b border-rule">
+                  <td className="py-1.5">{CELL_LABEL[c]}</td>
+                  <td className="py-1.5 text-muted">{CELL_GROUP[c]}</td>
+                  <td className="num py-1.5 text-right">{perType[i]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {cm && (
+            <p className="mt-3 text-small text-muted">
+              On {cm.test.n} held-out cells the grading model picked the right type {(cm.test.accuracy * 100).toFixed(0)}% of the time
+              and flagged {(cm.test.abnormal.sensitivity * 100).toFixed(0)}% of abnormal cells, with {((1 - cm.test.abnormal.specificity) * 100).toFixed(0)}% of other cells flagged by mistake.
+              Those cells came from one dataset; slides from another laboratory, stain or magnification can score differently.
+            </p>
+          )}
+        </section>
+      )}
       <figure className="mt-6">
         <div className="flex h-24 items-end gap-0.5" aria-hidden="true">
           {hist.map((n, i) => <span key={i} className={`flex-1 ${thr !== null && ((i + 1) * maxNc) / bins > thr ? 'bg-[#ffb000]' : 'bg-cobalt'}`} style={{ height: `${(n / Math.max(1, ...hist)) * 100}%` }} />)}

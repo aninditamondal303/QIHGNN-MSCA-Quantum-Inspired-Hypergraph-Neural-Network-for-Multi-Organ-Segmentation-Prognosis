@@ -781,6 +781,11 @@
    "file": "liver_tumour.onnx",
    "bytes": 17471762,
    "max_abs_diff_vs_torch": 1.7881393432617188e-07
+  },
+  "cells": {
+   "file": "cells.onnx",
+   "bytes": 16047998,
+   "max_abs_diff_vs_torch": 0.00012376904487609863
   }
  },
  "minutes": 102.3,
@@ -1838,5 +1843,109 @@
   "tumour_volume_r": 0.5105010472551966,
   "note": "Volumes use each scan's own voxel size. Lesion size bands are in voxels of the 256 px grid (1000 voxels is roughly 2-4 cm3)."
  },
- "liver_generated_at": "2026-11-14 21:31"
+ "liver_generated_at": "2026-11-14 21:31",
+ "cells": {
+  "data": {
+   "source": "SIPaKMeD (cervical cells graded by cytologists)",
+   "cells": 4049,
+   "splits": {
+    "train": 2943,
+    "val": 572,
+    "test": 534
+   },
+   "per_class": [
+    831,
+    787,
+    793,
+    825,
+    813
+   ]
+  },
+  "classes": [
+   "superficial_intermediate",
+   "parabasal",
+   "metaplastic",
+   "koilocytotic",
+   "dyskeratotic"
+  ],
+  "temperature": 0.8,
+  "flag_threshold": 0.95,
+  "test": {
+   "n": 534,
+   "accuracy": 0.9550561797752809,
+   "accuracy_ci": [
+    0.9339970814498069,
+    0.9696146882608292
+   ],
+   "confusion": [
+    [
+     101,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     145,
+     3,
+     0,
+     3
+    ],
+    [
+     0,
+     0,
+     98,
+     6,
+     3
+    ],
+    [
+     2,
+     0,
+     2,
+     83,
+     0
+    ],
+    [
+     0,
+     0,
+     1,
+     4,
+     83
+    ]
+   ],
+   "recall": {
+    "superficial_intermediate": 1.0,
+    "parabasal": 0.9602649006622517,
+    "metaplastic": 0.9158878504672897,
+    "koilocytotic": 0.9540229885057471,
+    "dyskeratotic": 0.9431818181818182
+   },
+   "ece": 0.01809425691093843,
+   "abnormal": {
+    "n": 534,
+    "tp": 165,
+    "tn": 355,
+    "fp": 4,
+    "fn": 10,
+    "sensitivity": 0.9428571428571428,
+    "sensitivity_ci": [
+     0.8980200480918765,
+     0.9686686865202048
+    ],
+    "specificity": 0.9888579387186629,
+    "specificity_ci": [
+     0.9717054265165187,
+     0.9956588448349469
+    ],
+    "accuracy": 0.9737827715355806,
+    "accuracy_ci": [
+     0.9564774350455356,
+     0.9843200042005176
+    ],
+    "auc": 0.9968483883804218
+   }
+  },
+  "note": "Accuracy is measured on SIPaKMeD cells. Slides from other laboratories (stain, magnification) can score differently."
+ }
 }

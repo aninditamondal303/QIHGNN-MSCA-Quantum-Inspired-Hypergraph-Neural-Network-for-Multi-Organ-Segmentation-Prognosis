@@ -1,0 +1,6 @@
+{
+  "_comment": "Kaggle GPU run (T4/P100, one 12 h session): full model. Shorter than the report's 200-epoch schedule; see docs/DECISIONS.md.",
+  "model": {},
+  "train": {"dataset": "cache", "epochs": 30, "warmup_epochs": 2, "max_steps_per_epoch": 300,
+            "grad_accumulation": 2, "num_workers": 2, "time_limit_hours": 4.0}
+}

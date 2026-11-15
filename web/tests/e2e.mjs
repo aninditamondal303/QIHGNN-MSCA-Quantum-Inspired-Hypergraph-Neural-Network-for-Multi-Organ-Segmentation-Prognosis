@@ -164,10 +164,18 @@ try {
     const published = await page.evaluate(async () => (await fetch('screen/cervix.onnx', { method: 'HEAD' })).ok);
     if (!published) return;
     await page.locator('section', { hasText: 'held-out test image' }).getByRole('button').first().click();
-    const h = page.getByText(/\d+ cells measured/).first();
-    await h.waitFor({ timeout: 90000 });
-    const n = Number((await h.textContent()).match(/\d+/)[0]);
+    const h = page.getByRole('heading', { name: /\d+ cells measured|abnormal-looking cells? of \d+|\d+ cells, none flagged/ }).first();
+    await h.waitFor({ timeout: 120000 });
+    const t = await h.textContent();
+    const n = Number(t.match(/(\d+) cells/)?.[1] ?? t.match(/of (\d+)/)[1]);
     assert.ok(n >= 20 && n <= 200, `cells measured ${n}`);
+    const graded = await page.evaluate(async () => (await fetch('screen/cells.onnx', { method: 'HEAD' })).ok);
+    if (graded) {
+      // every measured cell gets a type, and the per-type counts add up
+      const counts = await page.locator('section[aria-label="Cell types"] td.num').allTextContents();
+      assert.equal(counts.length, 5);
+      assert.equal(counts.reduce((a, c) => a + Number(c), 0), n);
+    }
   });
 
   await step('liver CT: a held-out CT scan is measured in the browser, close to the expert', async () => {

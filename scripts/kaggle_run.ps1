@@ -5,7 +5,7 @@
 # Uploads ml/ as a private Kaggle dataset, pushes a private kernel with the three datasets attached,
 # waits for it to finish and downloads its output to kaggle_output\. Progress goes to kaggle.log.
 param([ValidateSet("probe", "probe-train", "train")][string]$Mode = "probe",
-      [ValidateSet("main", "screen", "organs", "net3d")][string]$Job = "main",
+      [ValidateSet("main", "screen", "organs", "net3d", "extra")][string]$Job = "main",
       [switch]$WaitOnly)   # skip upload and push: keep waiting for the kernel already running, then download its output
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
@@ -98,6 +98,9 @@ if ($Job -eq "screen") {
 }
 if ($Job -eq "organs") {
     $sources += @("andrewmvd/liver-tumor-segmentation", "andrewmvd/liver-tumor-segmentation-part-2")  # original LiTS CT volumes (NIfTI, Hounsfield units)
+}
+if ($Job -eq "extra") {
+    $sources += @("andrewmvd/liver-tumor-segmentation", "andrewmvd/liver-tumor-segmentation-part-2", "omarxadel/chaos-combined-ct-mr-healthy-abdominal-organ", "prahladmehandiratta/cervical-cancer-largest-dataset-sipakmed")
 }
 $meta = [ordered]@{
     id                  = $kid

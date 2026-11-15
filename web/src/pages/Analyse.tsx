@@ -1,3 +1,4 @@
+import { CompareCanvas } from '../components/Compare';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { LuCircleAlert, LuFileUp, LuLoader, LuPrinter, LuRotateCcw, LuShieldCheck } from 'react-icons/lu';
 import { Container, PageHead } from '../components/chrome';
@@ -48,7 +49,7 @@ type Mode = 'brain' | 'liver' | 'cervix';
 const MODES: Record<Mode, { tab: string; sub: string; title: string; lead: string }> = {
   brain: { tab: 'Brain MRI', sub: 'tumour check, outline, prognosis', title: 'Upload a brain MRI.', lead: 'Get a tumour check, an outline with its size, and a survival estimate. The models run inside this browser tab, so the scan is never uploaded anywhere.' },
   liver: { tab: 'Liver CT', sub: 'liver and tumour outline, burden', title: 'Upload a liver CT.', lead: 'Outline the liver and any tumours on a CT slice, or on a whole CT scan get liver and tumour volume, tumour burden and the number of lesions. Computed in this browser tab.' },
-  cervix: { tab: 'Cervical cells', sub: 'cells, nuclei, N:C ratio', title: 'Upload a cervical cell image.', lead: 'Outline every cell and nucleus in a microscope image of cervical cells, count them, and measure each cell’s nucleus-to-cytoplasm ratio, flagging unusual cells for review. Computed in this browser tab.' },
+  cervix: { tab: 'Cervical cells', sub: 'cells, N:C ratio, cell type', title: 'Upload a cervical cell image.', lead: 'Outline every cell and nucleus in a microscope image of cervical cells, measure each cell’s nucleus-to-cytoplasm ratio, grade each cell’s type and flag abnormal-looking ones for review. Computed in this browser tab.' },
 };
 
 function ModeTabs({ mode, onPick }: { mode: Mode; onPick: (m: Mode) => void }) {
@@ -302,7 +303,6 @@ function Viewer({ result }: { result: Result }) {
   const [layer, setLayer] = useState<Layer>('outline');
   const [z, setZ] = useState(result.kind === '3d' ? result.best : 0);
   useEffect(() => setZ(result.kind === '3d' ? result.best : 0), [result]);
-  const canvas = useRef<HTMLCanvasElement>(null);
 
   const view = useMemo(() => {
     if (result.kind === '2d') return { gray: result.gray, prob: result.seg.prob, segLb: result.seg.lb, cls: result.cls };
@@ -311,9 +311,7 @@ function Viewer({ result }: { result: Result }) {
     return { gray, prob: result.probs[z], segLb, cls: z === result.best ? result.cls : null };
   }, [result, z]);
 
-  useEffect(() => {
-    const c = canvas.current;
-    if (!c) return;
+  const paint = (c: HTMLCanvasElement, overlay: boolean) => {
     const { gray } = view;
     c.width = gray.w;
     c.height = gray.h;
@@ -324,9 +322,10 @@ function Viewer({ result }: { result: Result }) {
       img.data[i * 4 + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
+    if (!overlay) return;
     if (layer === 'outline') drawMask(ctx, view.prob, SEG_SIZE, view.segLb, gray);
     if (layer === 'heatmap' && view.cls) drawCam(ctx, view.cls, gray);
-  }, [view, layer]);
+  };
 
   const options: [Layer, string][] = [['outline', 'Tumour outline'], ['heatmap', 'Decision heat map'], ['none', 'Scan only']];
   return (
@@ -350,7 +349,7 @@ function Viewer({ result }: { result: Result }) {
             ))}
           </div>
         </div>
-        <canvas key={result.name} ref={canvas} className="develop-sweep block h-auto max-h-[70vh] w-full object-contain [image-rendering:auto]" aria-label={`Scan ${result.name} with ${layer} overlay`} />
+        <CompareCanvas key={result.name} paint={paint} deps={[view, layer]} className="block h-auto max-h-[70vh] w-full object-contain [image-rendering:auto]" label={`Scan ${result.name} with ${layer} overlay`} />
         {result.kind === '3d' && (
           <div className="border-t border-film-rule px-4 py-3">
             <label className="flex items-center gap-3 text-small text-film-muted">
@@ -362,6 +361,7 @@ function Viewer({ result }: { result: Result }) {
         )}
       </div>
       <figcaption className="mt-2 text-small text-muted">
+        Drag across the image to compare the AI result with the original scan.{' '}
         {layer === 'outline' && 'Red: region the outliner marks as tumour (probability above 0.5).'}
         {layer === 'heatmap' && 'Warm colours: the image regions that pushed the tumour check towards its answer.'}
         {result.kind === '3d' && ' The bars under the slider show tumour area per slice; the heat map is computed on the slice with the largest area.'}

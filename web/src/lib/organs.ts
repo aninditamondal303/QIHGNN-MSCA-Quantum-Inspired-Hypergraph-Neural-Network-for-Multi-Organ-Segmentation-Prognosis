@@ -277,7 +277,8 @@ export function lesions3d(stack: Uint8Array[], w: number, h: number, minVoxels =
 
 // ---------------------------------------------------------------- cervix
 /** Resize to fill 512 x 384 (centre crop), like the 4:3 training images. */
-export async function cervixInput(file: Blob): Promise<{ rgb: Uint8ClampedArray; crop: { sx: number; sy: number; sw: number; sh: number; w: number; h: number } }> {
+export interface CervixCrop { sx: number; sy: number; sw: number; sh: number; w: number; h: number }
+export async function cervixInput(file: Blob): Promise<{ rgb: Uint8ClampedArray; crop: CervixCrop; bitmap: ImageBitmap }> {
   const bmp = await createImageBitmap(file);
   const scale = Math.max(CERV_W / bmp.width, CERV_H / bmp.height);
   const sw = CERV_W / scale;
@@ -290,7 +291,7 @@ export async function cervixInput(file: Blob): Promise<{ rgb: Uint8ClampedArray;
   const ctx = c.getContext('2d')!;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, CERV_W, CERV_H);
-  return { rgb: ctx.getImageData(0, 0, CERV_W, CERV_H).data, crop: { sx, sy, sw, sh, w: bmp.width, h: bmp.height } };
+  return { rgb: ctx.getImageData(0, 0, CERV_W, CERV_H).data, crop: { sx, sy, sw, sh, w: bmp.width, h: bmp.height }, bitmap: bmp };
 }
 
 export async function cervixClasses(rgba: Uint8ClampedArray): Promise<Uint8Array> {
@@ -395,4 +396,116 @@ export function cellsFromClasses(cls: Uint8Array, w: number, h: number): { owner
     cells.push({ id, nucleusPx: a.n, cytoplasmPx: cyto, nc: a.n / cyto, cx: a.sx / a.t, cy: a.sy / a.t });
   }
   return { owner, cells };
+}
+
+// ---------------------------------------------------------------- cell grading
+/** The five cell types cytologists graded in SIPaKMeD, and the group the website reports for each. */
+export const CELL_CLASSES = ['superficial_intermediate', 'parabasal', 'metaplastic', 'koilocytotic', 'dyskeratotic'] as const;
+export const CELL_GROUP: Record<(typeof CELL_CLASSES)[number], 'normal' | 'benign' | 'abnormal'> = {
+  superficial_intermediate: 'normal', parabasal: 'normal', metaplastic: 'benign', koilocytotic: 'abnormal', dyskeratotic: 'abnormal',
+};
+export const CELL_LABEL: Record<(typeof CELL_CLASSES)[number], string> = {
+  superficial_intermediate: 'Superficial / intermediate', parabasal: 'Parabasal', metaplastic: 'Metaplastic',
+  koilocytotic: 'Koilocytotic', dyskeratotic: 'Dyskeratotic',
+};
+export const CELL_SIZE = 128;
+const CELL_MARGIN = 0.1;
+
+export interface CellGrade { id: number; probs: number[]; top: number; abnormal: number }
+
+/** Bounding box of every cell in the 512 x 384 analysis grid. */
+export function cellBoxes(owner: Int32Array, w: number, h: number): Map<number, { x0: number; y0: number; x1: number; y1: number }> {
+  const boxes = new Map<number, { x0: number; y0: number; x1: number; y1: number }>();
+  for (let i = 0; i < owner.length; i++) {
+    const o = owner[i];
+    if (!o) continue;
+    const y = Math.floor(i / w);
+    const x = i - y * w;
+    const b = boxes.get(o);
+    if (!b) boxes.set(o, { x0: x, y0: y, x1: x + 1, y1: y + 1 });
+    else {
+      if (x < b.x0) b.x0 = x;
+      if (y < b.y0) b.y0 = y;
+      if (x + 1 > b.x1) b.x1 = x + 1;
+      if (y + 1 > b.y1) b.y1 = y + 1;
+    }
+  }
+  void h;
+  return boxes;
+}
+
+/** Same as cells.square in Python: pad the crop to a square with the median colour of its border, then resize. */
+export function squareCrop(rgba: Uint8ClampedArray, w: number, h: number, size = CELL_SIZE): Float32Array {
+  const border: number[][] = [[], [], []];
+  const push = (x: number, y: number) => { for (let c = 0; c < 3; c++) border[c].push(rgba[(y * w + x) * 4 + c]); };
+  for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+  for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+  const med = border.map((v) => {
+    v.sort((a, b) => a - b);
+    const m = v.length >> 1;
+    return Math.floor(v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2);
+  });
+  const s = Math.max(w, h);
+  const sq = document.createElement('canvas');
+  sq.width = s;
+  sq.height = s;
+  const sctx = sq.getContext('2d')!;
+  sctx.fillStyle = `rgb(${med[0]},${med[1]},${med[2]})`;
+  sctx.fillRect(0, 0, s, s);
+  sctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), w, h), (s - w) >> 1, (s - h) >> 1);
+  const out = document.createElement('canvas');
+  out.width = size;
+  out.height = size;
+  const octx = out.getContext('2d')!;
+  octx.imageSmoothingQuality = 'high';
+  octx.drawImage(sq, 0, 0, size, size);
+  const px = octx.getImageData(0, 0, size, size).data;
+  const n = size * size;
+  const x = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) {
+    x[i] = px[i * 4] / 255;
+    x[n + i] = px[i * 4 + 1] / 255;
+    x[2 * n + i] = px[i * 4 + 2] / 255;
+  }
+  return x;
+}
+
+/** Grade every measured cell: crop it from the full-resolution image, run the SIPaKMeD classifier on the crops. */
+export async function gradeCells(bitmap: ImageBitmap, crop: CervixCrop, owner: Int32Array, cells: Cell[], batch = 16): Promise<CellGrade[]> {
+  const ort = await loadOrt();
+  const s = await session('cells');
+  const boxes = cellBoxes(owner, CERV_W, CERV_H);
+  const k = crop.sw / CERV_W; // source pixels per analysis pixel
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  const per = 3 * CELL_SIZE * CELL_SIZE;
+  const out: CellGrade[] = [];
+  for (let i = 0; i < cells.length; i += batch) {
+    const part = cells.slice(i, i + batch);
+    const x = new Float32Array(part.length * per);
+    part.forEach((cell, j) => {
+      const b = boxes.get(cell.id)!;
+      const mx = (b.x1 - b.x0) * CELL_MARGIN;
+      const my = (b.y1 - b.y0) * CELL_MARGIN;
+      const x0 = Math.max(0, Math.floor(crop.sx + (b.x0 - mx) * k));
+      const y0 = Math.max(0, Math.floor(crop.sy + (b.y0 - my) * k));
+      const x1 = Math.min(crop.w, Math.ceil(crop.sx + (b.x1 + mx) * k));
+      const y1 = Math.min(crop.h, Math.ceil(crop.sy + (b.y1 + my) * k));
+      // very large crops are shrunk first; the classifier only sees 128 px anyway
+      const f = Math.min(1, 512 / Math.max(x1 - x0, y1 - y0));
+      c.width = Math.max(1, Math.round((x1 - x0) * f));
+      c.height = Math.max(1, Math.round((y1 - y0) * f));
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(bitmap, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height);
+      x.set(squareCrop(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height), j * per);
+    });
+    const res = await s.run({ rgb: new ort.Tensor('float32', x, [part.length, 3, CELL_SIZE, CELL_SIZE]) });
+    const p = res.probs.data as Float32Array;
+    part.forEach((cell, j) => {
+      const probs = Array.from(p.subarray(j * 5, j * 5 + 5));
+      const top = probs.indexOf(Math.max(...probs));
+      out.push({ id: cell.id, probs, top, abnormal: probs[3] + probs[4] });
+    });
+  }
+  return out;
 }

@@ -15,6 +15,7 @@ Everything below (crop box, resizing, clean-up) is mirrored in web/src/lib/organ
 from __future__ import annotations
 
 import argparse
+import gc
 import time
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -242,6 +243,95 @@ def load_nifti(index, volumes: List[int], train: bool, rng: np.random.Generator,
     return out
 
 
+def chaos_index(root: Path) -> Dict[int, Tuple[Path, Path | None]]:
+    """CHAOS CT (healthy liver donors): {10000 + case: (DICOM folder, Ground folder or None)}. Train sets carry liver
+    masks; test sets do not, but every scan is tumour-free, so all of them can test false alarms."""
+    out = {}
+    for d in sorted(Path(root).rglob("DICOM_anon")):
+        if d.parent.parent.name != "CT":
+            continue
+        case = int(d.parent.name)
+        is_test = "Test" in str(d)
+        g = d.parent / "Ground"
+        out[(20000 if is_test else 10000) + case] = (d, g if g.is_dir() else None)
+    return out
+
+
+def read_chaos_case(dicom_dir: Path, ground_dir: Path | None):
+    """HU (z, y, x) float32, labels (z, y, x) uint8 or None, voxel size (x, y, z). The ground-truth PNG order and
+    orientation are checked against the CT itself: of the four readings (as stored / reversed slices, as stored /
+    flipped rows), the one whose liver voxels have liver-like Hounsfield units is kept."""
+    import pydicom
+    from PIL import Image
+
+    ds = [pydicom.dcmread(str(f)) for f in sorted(dicom_dir.glob("*.dcm"))]
+    ds.sort(key=lambda d: float(getattr(d, "ImagePositionPatient", [0, 0, getattr(d, "InstanceNumber", 0)])[2]))
+    hu = np.stack([d.pixel_array.astype(np.float32) * float(getattr(d, "RescaleSlope", 1)) + float(getattr(d, "RescaleIntercept", 0)) for d in ds])
+    sy, sx = (float(v) for v in ds[0].PixelSpacing)
+    zs = [float(getattr(d, "ImagePositionPatient", [0, 0, i])[2]) for i, d in enumerate(ds)]
+    sz = float(np.median(np.abs(np.diff(zs)))) if len(zs) > 1 else float(getattr(ds[0], "SliceThickness", 1.0))
+    lab = None
+    if ground_dir is not None:
+        g = np.stack([np.asarray(Image.open(f)) > 0 for f in sorted(ground_dir.glob("*.png"))]).astype(np.uint8)
+        if len(g) == len(hu):
+            best, choice = -1.0, None
+            for rev in (False, True):
+                for flip in (False, True):
+                    m = g[::-1] if rev else g
+                    m = m[:, ::-1] if flip else m
+                    v = hu[m.astype(bool)]
+                    score = float(((v > -20) & (v < 180)).mean()) if v.size else 0.0
+                    if score > best:
+                        best, choice = score, np.ascontiguousarray(m)
+            lab = choice
+    return hu, lab, (sx, sy, sz)
+
+
+def load_chaos(index, cases: List[int], train: bool, rng: np.random.Generator, workers: int = 4):
+    """Same tuple layout as load_nifti; healthy scans have no tumour label. Unlabelled scans get masks of -1 (unknown)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from .common import letterbox
+
+    def one(v):
+        hu, seg, (sx, sy, sz) = read_chaos_case(*index[v])
+        if seg is None:
+            seg = np.full(hu.shape, 255, np.uint8)  # unknown liver extent; never used for scoring outlines
+        zs = np.arange(len(hu))
+        if train:
+            has = (seg == 1).reshape(len(seg), -1).any(1)
+            pos, neg = zs[has], zs[~has]
+            r = np.random.default_rng(int(rng.integers(1 << 30)) + v)
+            neg = r.choice(neg, min(len(neg), max(2, len(pos) // 4)), replace=False) if len(neg) else neg
+            zs = np.sort(np.concatenate([pos, neg]).astype(int))
+        imgs, msks, fulls, lb = [], [], [], None
+        for z in zs:
+            f = hu_to_u8(hu[z])
+            g, lb = letterbox(f, LIVER)
+            imgs.append(g)
+            msks.append(letterbox(seg[z], LIVER, order=0)[0])
+            fulls.append(f)
+        return v, (np.stack(imgs), np.stack(msks), (sx / lb["scale"], sy / lb["scale"], sz), np.stack(fulls), seg[zs] if train else None, lb)
+
+    out = {}
+    with ThreadPoolExecutor(workers) as pool:
+        for v, d in pool.map(one, cases):
+            out[v] = d
+    return out
+
+
+def patient_burden(s1: np.ndarray, probs, thr: float) -> Tuple[int, int]:
+    """(largest predicted lesion in voxels, number of predicted lesions >= MIN_LESION_VOXELS) for one scan."""
+    from scipy import ndimage
+
+    pred = np.stack([combine(s1[i], probs[i], thr) for i in range(len(s1))]) == 2
+    lab, n = ndimage.label(pred)
+    if not n:
+        return 0, 0
+    sizes = np.bincount(lab.ravel())[1:]
+    return int(sizes.max()), int((sizes >= MIN_LESION_VOXELS).sum())
+
+
 def write_nifti_i16(path: Path, vol_zyx: np.ndarray, spacing_xyz) -> None:
     """NIfTI-1, int16 Hounsfield units stored [z][y][x]."""
     import gzip
@@ -370,6 +460,7 @@ def volume_rows(data, s1s, probs_all, thr: float) -> List[Dict]:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--nifti", default="", help="original LiTS release (volume-N.nii, segmentation-N.nii), comma-separated folders: trains both stages")
+    ap.add_argument("--chaos", default="", help="CHAOS CT (healthy liver donors): adds healthy livers to training and tests false alarms")
     ap.add_argument("--lits", default="", help="JPEG mirror of LiTS (used with --stage1 when --nifti is not given)")
     ap.add_argument("--stage1", default="", help="published liver.onnx, for the mirror route")
     ap.add_argument("--out", required=True)
@@ -407,11 +498,29 @@ def main() -> None:
         return [v for v in vols if split[v] == k]
 
     if NIFTI:
-        tr, va, te = load_nifti(index, pick("train"), True, rng), load_nifti(index, pick("val"), False, rng), load_nifti(index, pick("test"), False, rng)
+        # test and healthy scans are loaded only after training, once the training slices are freed (memory)
+        tr, va, te = load_nifti(index, pick("train"), True, rng), load_nifti(index, pick("val"), False, rng), {}
     else:
         tr = load_volumes(index, pick("train"), liver_only=True)
         va, te = load_volumes(index, pick("val")), load_volumes(index, pick("test"))
-    log("volumes loaded", {k: (len(d), sum(len(x[0]) for x in d.values())) for k, d in (("train", tr), ("val", va), ("test", te))})
+    healthy: Dict[int, tuple] = {}  # tumour-free scans without liver labels: patient-level false alarms only
+    chaos_test: List[int] = []
+    unl_cases: List[int] = []
+    cidx = None
+    if NIFTI and a.chaos:
+        cidx = chaos_index(Path(a.chaos))
+        lab_cases = [k for k, (_, g) in cidx.items() if g is not None]
+        unl_cases = [k for k, (_, g) in cidx.items() if g is None]
+        if P:
+            lab_cases, unl_cases = lab_cases[:3], unl_cases[:1]
+        csplit = {k: group_split(f"chaos:{k}") for k in lab_cases}
+        if P:
+            csplit = dict(zip(lab_cases, ("train", "val", "test")))
+        tr.update(load_chaos(cidx, [k for k in lab_cases if csplit[k] == "train"], True, rng))
+        va.update(load_chaos(cidx, [k for k in lab_cases if csplit[k] == "val"], False, rng))
+        chaos_test = [k for k in lab_cases if csplit[k] == "test"]
+        log("CHAOS healthy livers", {"labelled": {k: sum(csplit[c] == k for c in lab_cases) for k in ("train", "val", "test")}, "unlabelled (test only)": len(unl_cases)})
+    log("volumes loaded", {k: (len(d), sum(len(x[0]) for x in d.values())) for k, d in (("train", tr), ("val", va))}, "test and healthy load after training")
     imgs = np.concatenate([d[0] for d in tr.values()])
     msks = np.concatenate([d[1] for d in tr.values()])
     if NIFTI:  # original-resolution slices for stage 2 (volumes differ in size, so keep them as lists)
@@ -420,6 +529,8 @@ def main() -> None:
         lbs = [d[5] for d in tr.values() for _ in range(len(d[0]))]
     else:
         fulls = full_masks = lbs = None
+    del tr  # the 256 px slices now live in imgs / msks only
+    gc.collect()
 
     # ---- stage 1: liver (trained here on real CT; on the mirror route the published model is reused)
     s1_info = None
@@ -486,10 +597,41 @@ def main() -> None:
     slice_px = max(cands or [1], key=youden)
     log("validation: tumour threshold", thr, thr_scores, "slice rule: tumour px >=", slice_px)
 
-    # ---- test patients, every slice
+    # ---- patient level: "tumour present" when the largest predicted lesion reaches T voxels; T chosen on validation
+    va_pat = [(patient_burden(va_s1[v], va_probs[v], thr)[0], int((d[1] == 2).any())) for v, d in va.items()]
+    pl = np.array([b for b, _ in va_pat]); py = np.array([y for _, y in va_pat], bool)
+
+    def youden_p(t):
+        pred = pl >= t
+        return (pred & py).sum() / max(1, py.sum()) + (~pred & ~py).sum() / max(1, (~py).sum())
+
+    pcands = sorted({MIN_LESION_VOXELS} | {int(b) for b in pl if b >= MIN_LESION_VOXELS})
+    patient_t = max(pcands, key=youden_p)
+    log("validation patients", len(va_pat), "with tumour", int(py.sum()), "rule: largest lesion >=", patient_t, "voxels")
+
+    # ---- test patients, every slice (training data freed first)
+    del ds, imgs, msks, fulls, full_masks, lbs
+    gc.collect()
+    if NIFTI:
+        te = load_nifti(index, pick("test"), False, rng)
+        if cidx is not None:
+            te.update(load_chaos(cidx, chaos_test, False, rng))
+            healthy = load_chaos(cidx, unl_cases, False, rng)
+        log("test loaded", {k: (len(d), sum(len(x[0]) for x in d.values())) for k, d in (("test", te), ("healthy", healthy))})
     te_s1 = {v: s1fn(d[0]) for v, d in te.items()}
     te_probs = {v: run_stage2(net, d[0], te_s1[v], device, fulls=d[3] if NIFTI else None, lb=d[5] if NIFTI else None) for v, d in te.items()}
     rows = volume_rows(te, te_s1, te_probs, thr)
+    te_pat = [(patient_burden(te_s1[v], te_probs[v], thr)[0], int((d[1] == 2).any()), "lits" if v < 10000 else "chaos") for v, d in te.items()]
+    for d in healthy.values():
+        s1h = s1fn(d[0])
+        te_pat.append((patient_burden(s1h, run_stage2(net, d[0], s1h, device, fulls=d[3], lb=d[5]), thr)[0], 0, "chaos-unlabelled"))
+    patient = binary_report([b for b, _, _ in te_pat], [y for _, y, _ in te_pat], threshold=patient_t) if te_pat else None
+    if patient is not None:
+        patient["auc"] = binary_auc([b for b, _, _ in te_pat], [y for _, y, _ in te_pat])
+        patient["rule_largest_lesion_voxels"] = int(patient_t)
+        patient["tumour_free"] = {src: sum(1 for _, y, s2 in te_pat if not y and s2 == src) for src in ("lits", "chaos", "chaos-unlabelled")}
+        patient["false_alarms"] = {src: sum(1 for b, y, s2 in te_pat if not y and s2 == src and b >= patient_t) for src in ("lits", "chaos", "chaos-unlabelled")}
+    log("patient level", patient and {k: patient[k] for k in ("n", "sensitivity", "specificity", "auc", "tumour_free", "false_alarms")})
     sl = [x for r in rows for x in r["slices"]]
     det = binary_report([p for p, _ in sl], [y for _, y in sl], threshold=slice_px) if sl else None
     if det is not None:
@@ -502,7 +644,7 @@ def main() -> None:
         return float(np.corrcoef(x, y)[0, 1]) if len(x) > 2 and np.std(x) > 0 and np.std(y) > 0 else None
 
     M = {"generated_at": time.strftime("%Y-%m-%d %H:%M"), "device": device, "probe": P}
-    M["liver_data"] = {"source": "LiTS, original CT volumes (NIfTI, Hounsfield units)" if NIFTI else "LiTS, JPEG mirror",
+    M["liver_data"] = {"source": ("LiTS, original CT volumes (NIfTI, Hounsfield units)" + (" + CHAOS healthy livers" if a.chaos else "")) if NIFTI else "LiTS, JPEG mirror",
                        "volumes": len(index), "slices": n_slices,
                        "splits": {k: sum(split[v] == k for v in index) for k in ("train", "val", "test")}}
     L = {
@@ -537,6 +679,9 @@ def main() -> None:
     else:
         L["label_cleaning"] = "The LiTS mirror stores masks as JPEG; tumour regions with no solid 3x3 block (compression specks) are relabelled liver in training and test data alike."
         L["note"] = "Slice spacing is not stored in this mirror, so sizes are in pixels and relative to the liver; NIfTI uploads use their own voxel size."
+    L["patient_detection"] = patient
+    if healthy or any(v >= 10000 for v in te):
+        L["healthy_livers"] = "CHAOS CT: healthy liver donors. Labelled scans join training, validation and test; unlabelled ones are tested for false alarms only."
     M["liver"] = L
     log("test", {"liver": L["volume_dice_liver"]["mean"], "tumour": L["volume_dice_tumour"]["mean"], "tumour_median": L["volume_dice_tumour"]["median"],
                  "lesion_recall": L["lesions"]["recall"], "recall_large": L["lesions"]["recall_large"], "fp_per_patient": L["lesions"]["false_per_patient"]["mean"],

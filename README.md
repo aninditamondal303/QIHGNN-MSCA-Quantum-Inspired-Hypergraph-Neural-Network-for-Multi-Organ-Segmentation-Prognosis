@@ -137,7 +137,7 @@ A dataset may supervise an organ only if it provides pixel-level masks for that 
 
 - **BraTS 2020**: admitted for the brain channel (whole tumour). If `survival_info.csv` is present, the prognosis head trains on real right-censored survival data.
 - **LiTS**: admitted for the liver channel (liver and tumour merged).
-- **Cervical cancer segmentation**: admitted for the cervix only if it holds volumetric images with masks. 2D colposcopy or cytology images are rejected for the 3D network, for the same reason the report rejected SipakMed. The cervix then stays unsupervised and is suppressed at inference.
+- **Cervical cancer segmentation**: admitted for the cervix only if it holds volumetric images with masks. 2D colposcopy or cytology images are rejected for the 3D network, for the same reason the report rejected SIPaKMeD. The cervix then stays unsupervised and is suppressed at inference.
 - **KiTS19** is in the report but not in the current dataset list, so kidney is unsupervised until it is added.
 
 ## Results
@@ -189,7 +189,20 @@ Out-of-fold risk thirds separate clearly (log-rank p = 1.7e-06), but assigning B
 | Nuclei per image, error against the expert count | median 5 (mean 7.0), r = 0.904 |
 | Median nucleus-to-cytoplasm ratio per image, error | median 0.004, r = 0.928 |
 
-The data has cell and nucleus outlines but no diagnosis labels, so the tool measures; it does not grade the cells. Cells whose N:C ratio is above the 99th percentile of the training slides (0.24) are flagged for a cytologist to look at.
+That data has cell and nucleus outlines but no diagnosis labels, so this model measures. Cells whose N:C ratio is above the 99th percentile of the training slides (0.24) are flagged for a cytologist to look at.
+
+### Cervical cell grading (SIPaKMeD: 4,049 single cells graded by cytologists; 534 held-out cells, split by source image)
+
+A second model (EfficientNet-B0, temperature-scaled) sorts every cell the outline model finds into one of the five SIPaKMeD types. The browser cuts each cell out of the full-resolution image, pads it to a square and grades it.
+
+| Measure | Value |
+|---|---|
+| Cell type, accuracy (5 classes) | **95.5%** (95% CI 93.4–97.0%) |
+| Recall per type | superficial/intermediate 100%, parabasal 96.0%, metaplastic 91.6%, koilocytotic 95.4%, dyskeratotic 94.3% |
+| Abnormal-looking (koilocytotic or dyskeratotic) vs the rest | sensitivity 94.3% (165/175), specificity 98.9% (355/359), AUC 0.997 |
+| Calibration error (ECE) | 0.018 |
+
+The flag threshold (0.95) was set on validation cells to catch at least 90% of abnormal ones. SIPaKMeD cells are cut by hand from one collection; cells cut automatically from another laboratory's slides can score differently, and the grades are cell types, not a Bethesda diagnosis.
 
 ### Liver CT (LiTS, 131 original CT scans; 25 held-out patients, every slice)
 

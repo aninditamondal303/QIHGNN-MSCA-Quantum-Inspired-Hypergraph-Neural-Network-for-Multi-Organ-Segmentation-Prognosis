@@ -13,6 +13,7 @@ Author: Anindita Mondal.
 | Prognosis | Survival curve for glioma | Ridge Cox model on age, log tumour volume, extent of resection; 200 bootstrap refits | BraTS 2020 survival data, 236 patients | C-index 0.634 (age alone 0.621) |
 | Liver segmenter | Background, liver, tumour on a CT slice | Two stages: 2D U-Net finds the liver (abdominal window -160 to 240 HU); a second U-Net outlines tumours in a full-resolution crop around the liver | LiTS, 131 original CT volumes, patient split (25 test patients) | liver Dice 0.950, volume error median 3.4%; tumour Dice 0.422; 81% of lesions found (93% of larger), 2.1 false lesions per patient; tumour volume r 0.51 |
 | Cytology segmenter | Background, cytoplasm, nucleus on a microscope image of cervical cells | 2D U-Net, 3 classes, RGB, 1.9 M parameters | Cervical cytology, 686 images with cell and nucleus outlines, slide split (100 test images) | nucleus Dice 0.751, cell Dice 0.877; nuclei count median error 5 (r 0.904); median N:C error 0.004 (r 0.928) |
+| Cell grader | Five SIPaKMeD cell types (superficial/intermediate, parabasal, metaplastic, koilocytotic, dyskeratotic) for one cell crop | EfficientNet-B0, ImageNet-initialised, 128 px, temperature 0.80 | SIPaKMeD, 4,049 graded single cells, split by source image (534 test cells) | accuracy 95.5% (CI 93.4–97.0%); abnormal vs rest sensitivity 94.3%, specificity 98.9%, AUC 0.997; ECE 0.018 |
 
 ### Intended use
 
@@ -30,7 +31,7 @@ Diagnosis, screening of real patients, treatment planning, or any decision about
 - The brain outline covers the whole tumour region including oedema and does not separate sub-regions.
 - The prognosis model ranks risk modestly better than age alone and ignores treatment, molecular markers (such as IDH and MGMT) and performance status. Its survival-class accuracy equals the majority-class baseline.
 - Liver: trained on CT in Hounsfield units, windowed at -160 to 240 HU; JPG/PNG slices should use a similar abdominal window. Very large tumours can be badly under-measured, and small lesions are missed about a quarter of the time.
-- The cytology data has no diagnosis labels: the tool measures nucleus-to-cytoplasm ratios and flags outliers, and does not grade the cells.
+- The cytology outline data has no diagnosis labels: that model measures nucleus-to-cytoplasm ratios and flags outliers. Cell types come from a separate grader trained on SIPaKMeD's hand-cut cells; on the website it sees cells cut automatically from the user's image, which it was not tested on, and its five types are not a Bethesda diagnosis.
 
 ### Evaluation design
 

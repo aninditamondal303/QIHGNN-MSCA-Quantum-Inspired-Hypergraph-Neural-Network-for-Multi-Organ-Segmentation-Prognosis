@@ -194,7 +194,7 @@ export function loadOrt(): Promise<Ort> {
   return ortPromise;
 }
 
-type ModelName = 'classifier' | 'segmenter' | 'liver' | 'liver_tumour' | 'cervix' | 'net3d';
+type ModelName = 'classifier' | 'segmenter' | 'liver' | 'liver_tumour' | 'cervix' | 'cells' | 'net3d';
 type Feed = { data: Float32Array; dims: readonly number[] };
 /** What the call sites need from a session: run(feeds) -> outputs with .data. */
 export interface ModelRunner {

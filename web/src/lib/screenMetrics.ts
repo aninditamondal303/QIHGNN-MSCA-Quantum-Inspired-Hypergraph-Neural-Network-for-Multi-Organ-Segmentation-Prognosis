@@ -134,6 +134,13 @@ export interface OrganMetrics {
     liver_volume_r?: number | null;
     tumour_volume_error_cc?: Summary;
     tumour_volume_r?: number | null;
+    /** Whole-scan verdict: "tumour likely" when the largest lesion reaches rule_largest_lesion_voxels (chosen on validation). */
+    patient_detection?: (Binary & {
+      auc: number | null;
+      rule_largest_lesion_voxels: number;
+      tumour_free: Record<string, number>;
+      false_alarms: Record<string, number>;
+    }) | null;
     note: string;
   };
   cervix_data?: { images: number; slide_groups: number; splits: Record<string, number>; cells_annotated: number; nuclei_annotated: number };
@@ -152,7 +159,24 @@ export interface OrganMetrics {
     unusual_nc_threshold: number | null;
     note: string;
   };
-  export?: Partial<Record<'liver' | 'liver_tumour' | 'cervix', { file: string; bytes: number; max_abs_diff_vs_torch?: number }>>;
+  /** SIPaKMeD cell-type classifier (cells_metrics.json from ml/qihgnn/screen/cells.py). */
+  cells?: {
+    data: { source: string; cells: number; splits: Record<string, number>; per_class: number[] };
+    classes: string[];
+    temperature: number;
+    flag_threshold: number;
+    test: {
+      n: number;
+      accuracy: number;
+      accuracy_ci: [number, number];
+      confusion: number[][];
+      recall: Record<string, number | null>;
+      ece: number;
+      abnormal: { sensitivity: number; specificity: number; auc: number | null; [k: string]: unknown };
+    };
+    note: string;
+  };
+  export?: Partial<Record<'liver' | 'liver_tumour' | 'cervix' | 'cells', { file: string; bytes: number; max_abs_diff_vs_torch?: number }>>;
 }
 
 export interface OrganSample {
@@ -173,7 +197,8 @@ export function useOrgans() {
   // Each organ goes live on its own: a model is published only with its measured accuracy.
   const liverReady = ready && !!metrics.data?.liver?.tumour_threshold && !!metrics.data?.export?.liver && !!metrics.data?.export?.liver_tumour;
   const cervixReady = ready && !!metrics.data?.cervix && !!metrics.data?.export?.cervix;
-  return { metrics: metrics.data, samples: samples.data ?? [], loading: metrics.loading, ready, liverReady, cervixReady };
+  const cellsReady = cervixReady && !!metrics.data?.cells && !!metrics.data?.export?.cells;
+  return { metrics: metrics.data, samples: samples.data ?? [], loading: metrics.loading, ready, liverReady, cervixReady, cellsReady };
 }
 
 /** The 3D volume evaluation for the sequence that performed best (T2 in the published run). */
