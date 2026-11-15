@@ -206,7 +206,7 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Run the models in a Web Worker so 3D scans never freeze the page; remove the source code link' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Batch pause can no longer hang when the page gets no animation frames' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {

@@ -291,9 +291,17 @@ export async function classify(g: Gray): Promise<Classification> {
 /** Let the browser paint and handle input between inference batches. ONNX Runtime runs on the page's own thread, and
     awaiting it does not by itself give the browser a turn, so long 3D jobs would otherwise freeze the page. */
 export function yieldToBrowser(): Promise<void> {
+  // A frame lets the progress text paint; the timeout guarantees progress when no frames come (hidden or occluded tab).
   return new Promise((resolve) => {
-    if (typeof requestAnimationFrame === 'function' && document.visibilityState === 'visible') requestAnimationFrame(() => setTimeout(resolve, 0));
-    else setTimeout(resolve, 0);
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        resolve();
+      }
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(finish, 0));
+    setTimeout(finish, 50);
   });
 }
 
