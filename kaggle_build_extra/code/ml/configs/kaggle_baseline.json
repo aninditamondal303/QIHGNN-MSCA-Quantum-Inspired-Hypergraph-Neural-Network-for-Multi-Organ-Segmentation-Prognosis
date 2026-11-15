@@ -1,6 +1,0 @@
-{
-  "_comment": "Kaggle GPU run: matched baseline (MPO, hypergraph and MSCA removed), same schedule as kaggle_full.json.",
-  "model": {"use_mpo": false, "use_hypergraph": false, "use_msca": false},
-  "train": {"dataset": "cache", "epochs": 30, "warmup_epochs": 2, "max_steps_per_epoch": 300,
-            "grad_accumulation": 2, "num_workers": 2, "time_limit_hours": 3.0}
-}

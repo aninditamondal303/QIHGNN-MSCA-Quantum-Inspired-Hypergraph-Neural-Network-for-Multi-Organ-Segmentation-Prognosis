@@ -1,6 +1,0 @@
-{
-  "_comment": "Proves the pipeline runs end to end in minutes on a CPU. Synthetic phantoms, reduced resolution. Not a performance result.",
-  "model": {"input_shape": [64, 64, 32]},
-  "train": {"dataset": "phantom", "phantom_cases": 8, "epochs": 3, "warmup_epochs": 1,
-            "grad_accumulation": 1, "amp": false, "num_workers": 0}
-}

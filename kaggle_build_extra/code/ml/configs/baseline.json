@@ -1,5 +1,0 @@
-{
-  "_comment": "Matched baseline: same encoder, decoder, heads and schedule with MPO, hypergraph and MSCA removed.",
-  "model": {"use_mpo": false, "use_hypergraph": false, "use_msca": false},
-  "train": {"dataset": "cache"}
-}
