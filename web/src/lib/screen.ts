@@ -194,7 +194,7 @@ export function loadOrt(): Promise<Ort> {
   return ortPromise;
 }
 
-type ModelName = 'classifier' | 'segmenter' | 'liver' | 'liver_tumour' | 'cervix';
+type ModelName = 'classifier' | 'segmenter' | 'liver' | 'liver_tumour' | 'cervix' | 'net3d';
 type Feed = { data: Float32Array; dims: readonly number[] };
 /** What the call sites need from a session: run(feeds) -> outputs with .data. */
 export interface ModelRunner {
@@ -258,7 +258,9 @@ export function session(name: ModelName): Promise<ModelRunner> {
           return await new Promise<Record<string, { data: Float32Array; dims: number[] }>>((resolve, reject) => {
             const id = nextId++;
             pending.set(id, { resolve, reject });
-            w.postMessage({ id, base: new URL('.', document.baseURI).href, model: name, feeds: plain });
+            // Large inputs (the 3D network's 16 MB volume) are handed over, not copied; small ones are copied.
+            const big = Object.values(plain).filter((f) => f.data.byteLength > 4_000_000).map((f) => f.data.buffer);
+            w.postMessage({ id, base: new URL('.', document.baseURI).href, model: name, feeds: plain }, big);
           });
         } catch (e) {
           if ((e as Error).message !== 'worker-unavailable') throw e;

@@ -137,10 +137,9 @@ try {
     await page.locator('#architecture').getByRole('button', { name: /Multi-scale cross-attention/ }).first().click();
     await page.locator('#architecture h3', { hasText: /Multi-scale cross-attention/i }).waitFor();
     const wb = page.locator('#workbench');
-    await wb.getByRole('radio', { name: /PH-ABDOMEN-01/ }).click();
-    await wb.getByText('no corpus supervises it here; zeroed by the server').first().waitFor();
-    await page.getByRole('button', { name: 'Run network on this case' }).click();
-    await page.locator('#workbench [role=status]').waitFor({ timeout: 5000 });
+    await wb.getByRole('radio', { name: /lits_6/ }).click();
+    await wb.getByText('supervised by this corpus').first().waitFor();
+    await wb.getByText(/LITS-lits_6/).first().waitFor();
   });
 
   await step('about: questions expand', async () => {
@@ -182,6 +181,17 @@ try {
     const txt = await page.locator('.print-report').innerText();
     const liverCc = Number(txt.match(/Liver volume\s+([\d.]+)/i)[1]);
     assert.ok(Math.abs(liverCc - vol.true_liver_cc) / vol.true_liver_cc < 0.1, `liver ${liverCc} vs expert ${vol.true_liver_cc}`);
+  });
+
+  await step('workbench: the trained 3D network runs in the browser on a held-out patient', async () => {
+    await page.goto(URL + 'how-it-works', { waitUntil: 'networkidle' });
+    const published = await page.evaluate(async () => (await fetch('screen/net3d.onnx', { method: 'HEAD' })).ok);
+    if (!published) return;
+    await page.getByRole('button', { name: /Run network on this case/ }).click();
+    const line = page.getByText(/Against the expert on this held-out patient/);
+    await line.waitFor({ timeout: 300000 });
+    const dice = Number((await line.innerText()).match(/Dice (\d\.\d+)/)[1]);
+    assert.ok(dice > 0.5, `network Dice ${dice}`);
   });
 
   await step('no uncaught page errors', async () => {

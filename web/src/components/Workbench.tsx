@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { LuPlay } from 'react-icons/lu';
 import { apiError, type ApiState } from '../lib/data';
 import { int } from '../lib/format';
-import type { CaseInfo, CasesFile, PredictResponse } from '../lib/types';
+import type { CaseInfo, CasesFile, Label, PredictResponse } from '../lib/types';
 import { defaultChannel, LABEL_ORDER, overlaysFor, useCase } from '../lib/useCase';
 import { labelExtent, loadVolume, planeDepth, valueAt, type Plane, type Volume } from '../lib/volume';
 import { Container, SectionHead } from './chrome';
 import { FilmCanvas } from './FilmCanvas';
 import { labelName, Swatch } from './Legend';
+import { runNet3d } from '../lib/net3d';
 
 const PLANES: Plane[] = ['axial', 'coronal', 'sagittal'];
 type Source = 'reference' | 'network' | 'off';
@@ -58,6 +59,7 @@ export function Workbench({ cases, api }: { cases: CasesFile | null; api: ApiSta
   const [prediction, setPrediction] = useState<{ caseId: string; volume: Volume; response: PredictResponse } | null>(null);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [stage, setStage] = useState<string | null>(null);
   const { image, labels } = useCase(info, channel);
 
   // Reset view when the case changes; open on the slice with the most labelled anatomy.
@@ -102,6 +104,20 @@ export function Workbench({ cases, api }: { cases: CasesFile | null; api: ApiSta
     if (!info) return;
     setRunning(true);
     setMessage(null);
+    if (!api.online) {
+      // No server: the trained network runs right here in the browser.
+      try {
+        const { volume, response } = await runNet3d(info, setStage);
+        setPrediction({ caseId: info.id, volume, response });
+        setSource('network');
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : String(e));
+      } finally {
+        setStage(null);
+        setRunning(false);
+      }
+      return;
+    }
     try {
       const res = await fetch('api/predict', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ case_id: info.id }) });
       if (!res.ok) {
@@ -146,7 +162,7 @@ export function Workbench({ cases, api }: { cases: CasesFile | null; api: ApiSta
                     className={`border-b border-rule px-2 py-2.5 text-left last:border-b-0 ${info?.id === c.id ? 'bg-fg text-surface' : 'hover:bg-raised'}`}
                   >
                     <span className="block font-mono text-small">{c.id}</span>
-                    <span className={`block text-small ${info?.id === c.id ? 'text-surface/75' : 'text-muted'}`}>{c.modality}, {c.analogOf.startsWith('no ') ? c.analogOf : `imitates ${c.analogOf}`}</span>
+                    <span className={`block text-small ${info?.id === c.id ? 'text-surface/75' : 'text-muted'}`}>{c.modality}, {c.synthetic ? (c.analogOf.startsWith('no ') ? c.analogOf : `imitates ${c.analogOf}`) : `${c.analogOf}, held-out patient`}</span>
                   </button>
                 ))}
               </div>
@@ -279,7 +295,7 @@ export function Workbench({ cases, api }: { cases: CasesFile | null; api: ApiSta
                   disabled={running || !info}
                   className="flex w-full items-center justify-between gap-3 bg-fg px-4 py-3.5 text-left text-surface hover:bg-cobalt disabled:opacity-60"
                 >
-                  <span className="font-medium">{running ? 'Running network' : 'Run network on this case'}</span>
+                  <span className="font-medium" aria-live="polite">{running ? stage ?? 'Running network' : 'Run network on this case'}</span>
                   <LuPlay className="size-4" />
                 </button>
                 <p className="mt-3 text-small text-muted">
@@ -287,9 +303,26 @@ export function Workbench({ cases, api }: { cases: CasesFile | null; api: ApiSta
                     ? api.health.inference_ready
                       ? `Uses checkpoint ${api.health.checkpoint}.`
                       : 'The API is running but has no trained checkpoint yet.'
-                    : 'Needs the Python API and a trained checkpoint. Without them the viewer shows reference masks.'}
+                    : 'The trained network runs in your browser, on your device. The first run downloads it once and can take a minute.'}
                 </p>
                 {message && <p className="mt-3 border-l-2 border-vermilion pl-3 text-small" role="status">{message}</p>}
+                {pred && info && (() => {
+                  // Voxels the network gave to an organ this scan's corpus never labels: a real error, shown hatched.
+                  const counts = new Map<number, number>();
+                  for (const v of pred.volume.data) if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+                  const stray = [...counts].filter(([id]) => !info.supervised.includes(LABEL_ORDER[id]));
+                  return stray.length ? (
+                    <p className="mt-3 border-l-2 border-vermilion pl-3 text-small">
+                      The network also marked {stray.map(([id, n]) => `${int(n)} voxels as ${labelName(LABEL_ORDER[id])}`).join(' and ')}, which this scan does not contain (hatched in red): a mistake of the model, left visible on purpose.
+                    </p>
+                  ) : null;
+                })()}
+                {pred && info?.networkDice && (
+                  <p className="mt-3 border-l-2 border-cobalt pl-3 text-small">
+                    Against the expert on this held-out patient:{' '}
+                    {Object.entries(info.networkDice).map(([k, v]) => `${labelName(k as Label)} Dice ${v == null ? 'n/a' : v.toFixed(2)}`).join(', ')}.
+                  </p>
+                )}
                 {pred && (
                   <dl className="mt-5 grid grid-cols-3 border-t border-rule pt-4" aria-label="Prognosis output">
                     {Object.entries(pred.response.survival_probability).map(([k, v]) => (
@@ -300,7 +333,7 @@ export function Workbench({ cases, api }: { cases: CasesFile | null; api: ApiSta
                     ))}
                     <p className="col-span-3 mt-4 text-small text-muted">
                       Run {pred.response.run_id ?? 'unknown'} in {pred.response.seconds}s. Suppressed: {pred.response.suppressed.map(labelName).join(', ') || 'none'}.
-                      Risk outputs are uncalibrated until the model is trained on real survival data.
+                      Survival estimates come from a network tested on only 30 patients (C-index 0.71): research output, not a forecast for anyone.
                     </p>
                   </dl>
                 )}

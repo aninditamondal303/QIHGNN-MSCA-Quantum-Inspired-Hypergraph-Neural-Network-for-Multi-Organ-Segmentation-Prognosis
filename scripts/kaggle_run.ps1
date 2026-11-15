@@ -5,7 +5,7 @@
 # Uploads ml/ as a private Kaggle dataset, pushes a private kernel with the three datasets attached,
 # waits for it to finish and downloads its output to kaggle_output\. Progress goes to kaggle.log.
 param([ValidateSet("probe", "probe-train", "train")][string]$Mode = "probe",
-      [ValidateSet("main", "screen", "organs")][string]$Job = "main",
+      [ValidateSet("main", "screen", "organs", "net3d")][string]$Job = "main",
       [switch]$WaitOnly)   # skip upload and push: keep waiting for the kernel already running, then download its output
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
@@ -112,12 +112,13 @@ $meta = [ordered]@{
     competition_sources = @()
     kernel_sources      = @()
 }
+if ($Job -eq "net3d") { $meta["kernel_sources"] = @("$user/qihgnn-msca-train") }   # net3d reads the trained checkpoint (kept as a list in the JSON)
 if ($Mode -eq "train") { $meta["machine_shape"] = "NvidiaTeslaT4" }   # T4 x2 (16 GB each); the P100 is retired
 $meta | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $kern "kernel-metadata.json") -Encoding ascii
 Log "Pushing kernel $kid (gpu=$($Mode -eq 'train'))"
 $push = Run $kaggle @("-m", "kaggle", "kernels", "push", "-p", "`"$kern`"")
 Log $push
-if ($push -match "error|Error|403|401") { throw "kernel push failed: $push" }
+if ($push -match "error|Error|403|401|must be specified") { throw "kernel push failed: $push" }
 
 }
 $kid = $(if ($Job -eq "main") { "$user/qihgnn-msca-train" } else { "$user/qihgnn-msca-$Job" })

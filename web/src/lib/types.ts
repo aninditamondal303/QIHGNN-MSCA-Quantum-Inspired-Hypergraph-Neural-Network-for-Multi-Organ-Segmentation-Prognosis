@@ -20,6 +20,12 @@ export interface CaseInfo {
   present: Label[];
   voxels: Record<string, number>;
   note: string;
+  /** Real held-out cases: per-channel [lo, hi] that maps the 8-bit PNG back to training values. */
+  channelRanges?: [number, number][];
+  covariates?: number[];
+  /** Dice of the in-browser network against the expert on this case, measured when it was published. */
+  networkDice?: Record<string, number | null>;
+  model?: { run_id: string | null; suppressed: string[] };
 }
 
 export interface CasesFile {

@@ -17,11 +17,11 @@
  },
  "cases": [
   {
-   "id": "PH-BRAIN-01",
-   "title": "Synthetic brain MRI with enhancing lesion",
+   "id": "BRATS2020-BraTS20_Training_004",
+   "title": "Brain MRI, held-out patient BraTS20_Training_004",
    "modality": "MRI",
    "analogOf": "BraTS 2020",
-   "synthetic": true,
+   "synthetic": false,
    "shape": [
     128,
     128,
@@ -31,22 +31,40 @@
    "channels": [
     {
      "name": "T1",
-     "file": "PH-BRAIN-01/ch0.png"
+     "file": "BRATS2020-BraTS20_Training_004/ch0.png"
     },
     {
      "name": "T1ce",
-     "file": "PH-BRAIN-01/ch1.png"
+     "file": "BRATS2020-BraTS20_Training_004/ch1.png"
     },
     {
      "name": "T2",
-     "file": "PH-BRAIN-01/ch2.png"
+     "file": "BRATS2020-BraTS20_Training_004/ch2.png"
     },
     {
      "name": "FLAIR",
-     "file": "PH-BRAIN-01/ch3.png"
+     "file": "BRATS2020-BraTS20_Training_004/ch3.png"
     }
    ],
-   "label": "PH-BRAIN-01/label.png",
+   "channelRanges": [
+    [
+     -0.65771484375,
+     4.1796875
+    ],
+    [
+     -0.673828125,
+     3.85546875
+    ],
+    [
+     -0.67138671875,
+     3.841796875
+    ],
+    [
+     -0.625,
+     4.1953125
+    ]
+   ],
+   "label": "BRATS2020-BraTS20_Training_004/label.png",
    "spacing": [
     1,
     1,
@@ -60,16 +78,202 @@
     "brain"
    ],
    "voxels": {
-    "brain": 21813
+    "brain": 11957
    },
-   "note": "Lesion, oedema and necrotic core are warped ellipsoids inside folded cortex. Only the brain channel is supervised, as in BraTS."
+   "covariates": [
+    -1.8276666402816772,
+    1.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "networkDice": {
+    "brain": 0.919
+   },
+   "note": "Held-out test patient: never used for training. Preprocessed exactly as in training.",
+   "model": {
+    "run_id": "20261114-153232-cache",
+    "suppressed": [
+     "kidney",
+     "cervix",
+     "spleen"
+    ]
+   }
   },
   {
-   "id": "PH-ABDOMEN-01",
-   "title": "Synthetic abdominal CT, liver with one lesion",
+   "id": "BRATS2020-BraTS20_Training_005",
+   "title": "Brain MRI, held-out patient BraTS20_Training_005",
+   "modality": "MRI",
+   "analogOf": "BraTS 2020",
+   "synthetic": false,
+   "shape": [
+    128,
+    128,
+    64
+   ],
+   "mosaicColumns": 8,
+   "channels": [
+    {
+     "name": "T1",
+     "file": "BRATS2020-BraTS20_Training_005/ch0.png"
+    },
+    {
+     "name": "T1ce",
+     "file": "BRATS2020-BraTS20_Training_005/ch1.png"
+    },
+    {
+     "name": "T2",
+     "file": "BRATS2020-BraTS20_Training_005/ch2.png"
+    },
+    {
+     "name": "FLAIR",
+     "file": "BRATS2020-BraTS20_Training_005/ch3.png"
+    }
+   ],
+   "channelRanges": [
+    [
+     -0.6083984375,
+     4.01171875
+    ],
+    [
+     -0.630859375,
+     3.869384765625
+    ],
+    [
+     -0.63037109375,
+     3.80859375
+    ],
+    [
+     -0.58642578125,
+     4.30859375
+    ]
+   ],
+   "label": "BRATS2020-BraTS20_Training_005/label.png",
+   "spacing": [
+    1,
+    1,
+    2.0
+   ],
+   "supervised": [
+    "background",
+    "brain"
+   ],
+   "present": [
+    "brain"
+   ],
+   "voxels": {
+    "brain": 2556
+   },
+   "covariates": [
+    0.6244166493415833,
+    1.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "networkDice": {
+    "brain": 0.759
+   },
+   "note": "Held-out test patient: never used for training. Preprocessed exactly as in training.",
+   "model": {
+    "run_id": "20261114-153232-cache",
+    "suppressed": [
+     "kidney",
+     "cervix",
+     "spleen"
+    ]
+   }
+  },
+  {
+   "id": "BRATS2020-BraTS20_Training_011",
+   "title": "Brain MRI, held-out patient BraTS20_Training_011",
+   "modality": "MRI",
+   "analogOf": "BraTS 2020",
+   "synthetic": false,
+   "shape": [
+    128,
+    128,
+    64
+   ],
+   "mosaicColumns": 8,
+   "channels": [
+    {
+     "name": "T1",
+     "file": "BRATS2020-BraTS20_Training_011/ch0.png"
+    },
+    {
+     "name": "T1ce",
+     "file": "BRATS2020-BraTS20_Training_011/ch1.png"
+    },
+    {
+     "name": "T2",
+     "file": "BRATS2020-BraTS20_Training_011/ch2.png"
+    },
+    {
+     "name": "FLAIR",
+     "file": "BRATS2020-BraTS20_Training_011/ch3.png"
+    }
+   ],
+   "channelRanges": [
+    [
+     -0.61279296875,
+     4.140625
+    ],
+    [
+     -0.658203125,
+     3.81640625
+    ],
+    [
+     -0.6494140625,
+     3.748046875
+    ],
+    [
+     -0.59912109375,
+     4.38671875
+    ]
+   ],
+   "label": "BRATS2020-BraTS20_Training_011/label.png",
+   "spacing": [
+    1,
+    1,
+    2.0
+   ],
+   "supervised": [
+    "background",
+    "brain"
+   ],
+   "present": [
+    "brain"
+   ],
+   "voxels": {
+    "brain": 6346
+   },
+   "covariates": [
+    -0.004833333194255829,
+    0.0,
+    0.0,
+    1.0,
+    1.0
+   ],
+   "networkDice": {
+    "brain": 0.866
+   },
+   "note": "Held-out test patient: never used for training. Preprocessed exactly as in training.",
+   "model": {
+    "run_id": "20261114-153232-cache",
+    "suppressed": [
+     "kidney",
+     "cervix",
+     "spleen"
+    ]
+   }
+  },
+  {
+   "id": "LITS-lits_6",
+   "title": "Abdominal CT, held-out patient lits_6",
    "modality": "CT",
    "analogOf": "LiTS",
-   "synthetic": true,
+   "synthetic": false,
    "shape": [
     128,
     128,
@@ -79,22 +283,40 @@
    "channels": [
     {
      "name": "Abdomen window",
-     "file": "PH-ABDOMEN-01/ch0.png"
+     "file": "LITS-lits_6/ch0.png"
     },
     {
      "name": "Liver window",
-     "file": "PH-ABDOMEN-01/ch1.png"
+     "file": "LITS-lits_6/ch1.png"
     },
     {
      "name": "Bone window",
-     "file": "PH-ABDOMEN-01/ch2.png"
+     "file": "LITS-lits_6/ch2.png"
     },
     {
      "name": "Wide window",
-     "file": "PH-ABDOMEN-01/ch3.png"
+     "file": "LITS-lits_6/ch3.png"
     }
    ],
-   "label": "PH-ABDOMEN-01/label.png",
+   "channelRanges": [
+    [
+     0.0,
+     0.9921875
+    ],
+    [
+     0.0,
+     0.9921875
+    ],
+    [
+     0.0,
+     0.9921875
+    ],
+    [
+     0.0,
+     0.9921875
+    ]
+   ],
+   "label": "LITS-lits_6/label.png",
    "spacing": [
     1,
     1,
@@ -105,23 +327,37 @@
     "liver"
    ],
    "present": [
-    "liver",
-    "kidney",
-    "spleen"
+    "liver"
    ],
    "voxels": {
-    "liver": 58015,
-    "kidney": 5267,
-    "spleen": 5644
+    "liver": 16603
    },
-   "note": "Kidneys and spleen are present in the anatomy but this corpus annotates only the liver, so their channels are unsupervised for this case."
+   "covariates": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "networkDice": {
+    "liver": 0.948
+   },
+   "note": "Held-out test patient: never used for training. Preprocessed exactly as in training.",
+   "model": {
+    "run_id": "20261114-153232-cache",
+    "suppressed": [
+     "kidney",
+     "cervix",
+     "spleen"
+    ]
+   }
   },
   {
-   "id": "PH-PELVIS-01",
-   "title": "Synthetic pelvic CT with visible cervix",
+   "id": "LITS-lits_15",
+   "title": "Abdominal CT, held-out patient lits_15",
    "modality": "CT",
-   "analogOf": "no corpus supervises the cervix",
-   "synthetic": true,
+   "analogOf": "LiTS",
+   "synthetic": false,
    "shape": [
     128,
     128,
@@ -131,37 +367,74 @@
    "channels": [
     {
      "name": "Abdomen window",
-     "file": "PH-PELVIS-01/ch0.png"
+     "file": "LITS-lits_15/ch0.png"
     },
     {
      "name": "Liver window",
-     "file": "PH-PELVIS-01/ch1.png"
+     "file": "LITS-lits_15/ch1.png"
     },
     {
      "name": "Bone window",
-     "file": "PH-PELVIS-01/ch2.png"
+     "file": "LITS-lits_15/ch2.png"
     },
     {
      "name": "Wide window",
-     "file": "PH-PELVIS-01/ch3.png"
+     "file": "LITS-lits_15/ch3.png"
     }
    ],
-   "label": "PH-PELVIS-01/label.png",
+   "channelRanges": [
+    [
+     0.004669189453125,
+     0.99462890625
+    ],
+    [
+     0.004669189453125,
+     0.99462890625
+    ],
+    [
+     0.004669189453125,
+     0.99462890625
+    ],
+    [
+     0.004669189453125,
+     0.99462890625
+    ]
+   ],
+   "label": "LITS-lits_15/label.png",
    "spacing": [
     1,
     1,
     2.0
    ],
    "supervised": [
-    "background"
+    "background",
+    "liver"
    ],
    "present": [
-    "cervix"
+    "liver"
    ],
    "voxels": {
-    "cervix": 1667
+    "liver": 20357
    },
-   "note": "The cervix is drawn in the anatomy, but no registered corpus supervises the cervix channel, so the server suppresses it."
+   "covariates": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "networkDice": {
+    "liver": 0.766
+   },
+   "note": "Held-out test patient: never used for training. Preprocessed exactly as in training.",
+   "model": {
+    "run_id": "20261114-153232-cache",
+    "suppressed": [
+     "kidney",
+     "cervix",
+     "spleen"
+    ]
+   }
   }
  ]
 }

@@ -1,0 +1,22 @@
+{
+    "id":  "anindita23/qihgnn-msca-net3d",
+    "title":  "qihgnn-msca-net3d",
+    "code_file":  "run.py",
+    "language":  "python",
+    "kernel_type":  "script",
+    "is_private":  true,
+    "enable_gpu":  false,
+    "enable_internet":  true,
+    "dataset_sources":  [
+                            "anindita23/qihgnn-msca-code",
+                            "awsaf49/brats2020-training-data",
+                            "harshwardhanbhangale/lits-dataset",
+                            "balajikartheek/cervical-cancer-segmentation"
+                        ],
+    "competition_sources":  [
+
+                            ],
+    "kernel_sources":  [
+                           "anindita23/qihgnn-msca-train"
+                       ]
+}

@@ -1,0 +1,5 @@
+{
+  "_comment": "Short run on the preprocessed corpora to check data flow and loss behaviour on a single GPU.",
+  "model": {},
+  "train": {"dataset": "cache", "epochs": 10, "warmup_epochs": 1, "max_steps_per_epoch": 200}
+}

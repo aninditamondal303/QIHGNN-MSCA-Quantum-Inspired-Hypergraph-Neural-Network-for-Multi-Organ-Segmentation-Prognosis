@@ -43,6 +43,12 @@
       "problemMatcher": []
     },
     {
+      "label": "Kaggle: 3D network for the website (CPU, about 30 min)",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode probe -Job net3d",
+      "problemMatcher": []
+    },
+    {
       "label": "Kaggle: liver + cervix - inspect data (CPU, minutes)",
       "type": "shell",
       "command": "powershell -ExecutionPolicy Bypass -File scripts\\kaggle_run.ps1 -Mode probe -Job organs",
@@ -206,7 +212,7 @@
     {
       "label": "Git: commit all changes",
       "type": "shell",
-      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Batch pause can no longer hang when the page gets no animation frames' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
+      "command": "git config user.name 'Anindita Mondal'; git config user.email 'aninditamondal303@gmail.com'; git add -A; git commit -m 'Run the trained 3D QIHGNN-MSCA network in the browser on five real held-out patients (Workbench), no server needed' -m 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>' -m 'Claude-Session: https://claude.ai/code/session_015mMNjGnUhSi1xSA9WipG7t'; git log --oneline -3; git status --short",
       "problemMatcher": []
     },
     {
