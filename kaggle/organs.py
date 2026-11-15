@@ -231,7 +231,6 @@ def probe_nifti():
         print(os.path.basename(f), "shape", a.shape, "dtype", a.dtype, "pixdim", [round(float(x), 3) for x in h["pixdim"][1:4]],
               "slope/inter", h["scl_slope"], h["scl_inter"], "min/max", float(a.min()), float(a.max()),
               "axcodes", nib.aff2axcodes(im.affine))
-        sf = f.replace("volume", "segmentation")
         cand = [s for s in segs if os.path.basename(s).replace("segmentation", "volume") == os.path.basename(f)]
         if cand:
             m = np.asarray(nib.load(cand[0]).dataobj)

@@ -126,8 +126,37 @@ def predictor():
     return Predictor(ck)
 
 
+def _published_case(entry: dict):
+    """A real case published on the website: 8-bit PNG mosaics mapped back to training values with its stored ranges."""
+    from types import SimpleNamespace
+
+    import numpy as np
+    from PIL import Image
+
+    base = ROOT / "web" / "public" / "data" / "cases"
+    h, w, d = entry["shape"]
+    cols = entry["mosaicColumns"]
+
+    def volume(file: str) -> np.ndarray:
+        m = np.asarray(Image.open(base / file).convert("L"))
+        out = np.zeros((h, w, d), np.uint8)
+        for k in range(d):
+            r, c = divmod(k, cols)
+            out[:, :, k] = m[r * h:(r + 1) * h, c * w:(c + 1) * w]
+        return out
+
+    image = np.stack([lo + volume(ch["file"]).astype(np.float32) / 255 * (hi - lo)
+                      for ch, (lo, hi) in zip(entry["channels"], entry["channelRanges"])])
+    return SimpleNamespace(case_id=entry["id"], image=image, label=volume(entry["label"]), covariates=entry.get("covariates"))
+
+
 @lru_cache(maxsize=8)
 def case_volume(case_id: str):
+    published = ROOT / "web" / "public" / "data" / "cases.json"
+    if published.exists():
+        for entry in json.loads(published.read_text())["cases"]:
+            if entry["id"] == case_id and entry.get("channelRanges"):
+                return _published_case(entry)
     from qihgnn.phantoms import all_phantoms
 
     for ph in all_phantoms():

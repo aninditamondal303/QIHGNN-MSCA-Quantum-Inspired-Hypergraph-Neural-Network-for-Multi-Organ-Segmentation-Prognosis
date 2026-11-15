@@ -105,7 +105,9 @@ def full_box(box, lb=None):
         return box
     y0, x0, s = box
     sc = lb["scale"]
-    r = lambda v: int(np.floor(v + 0.5))
+    def r(v):
+        return int(np.floor(v + 0.5))
+
     return r((y0 - lb["top"]) / sc), r((x0 - lb["left"]) / sc), max(1, r(s / sc))
 
 
@@ -401,7 +403,9 @@ def main() -> None:
     split = {v: group_split(f"lits:{v}") for v in vols}  # same per-patient split as every earlier liver run
     if P:
         vols = [v for v in vols if split[v] == "train"][:3] + [v for v in vols if split[v] == "val"][:1] + [v for v in vols if split[v] == "test"][:2]
-    pick = lambda k: [v for v in vols if split[v] == k]
+    def pick(k):
+        return [v for v in vols if split[v] == k]
+
     if NIFTI:
         tr, va, te = load_nifti(index, pick("train"), True, rng), load_nifti(index, pick("val"), False, rng), load_nifti(index, pick("test"), False, rng)
     else:
@@ -432,14 +436,18 @@ def main() -> None:
         s1net, s1hist = train_multiclass(UNet2D(base=16, in_ch=1, out_ch=3), liver_dataset(list(imgs), list(msks), True), liver_val,
                                          epochs=1 if P else a.s1_epochs, max_steps=3 if P else a.s1_steps, device=device, batch=24,
                                          lr=2e-3, class_weights=[0.5, 1.0, 3.0], name="liver")
-        s1fn = lambda x: predict(s1net, x[:, None].astype(np.float32) / 255.0, device).argmax(1).astype(np.uint8)
+        def s1fn(x):
+            return predict(s1net, x[:, None].astype(np.float32) / 255.0, device).argmax(1).astype(np.uint8)
+
         s1_info = {"parameters": count(s1net), "history": s1hist}
     else:
         import onnxruntime as ort
 
         providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in ort.get_available_providers()]
         sess = ort.InferenceSession(a.stage1, providers=providers)
-        s1fn = lambda x: stage1(sess, x)
+        def s1fn(x):
+            return stage1(sess, x)
+
 
     # ---- stage 2: tumour inside the liver; every slice with liver, slices with tumour twice
     has_liver = (msks >= 1).reshape(len(msks), -1).any(1)
@@ -490,7 +498,9 @@ def main() -> None:
     big = [l for l in les if l["voxels"] >= 1000]
     small = [l for l in les if l["voxels"] < 1000]
     bt = np.array([r["burden_true"] for r in rows]); bp = np.array([r["burden_pred"] for r in rows])
-    corr = lambda x, y: float(np.corrcoef(x, y)[0, 1]) if len(x) > 2 and np.std(x) > 0 and np.std(y) > 0 else None
+    def corr(x, y):
+        return float(np.corrcoef(x, y)[0, 1]) if len(x) > 2 and np.std(x) > 0 and np.std(y) > 0 else None
+
     M = {"generated_at": time.strftime("%Y-%m-%d %H:%M"), "device": device, "probe": P}
     M["liver_data"] = {"source": "LiTS, original CT volumes (NIfTI, Hounsfield units)" if NIFTI else "LiTS, JPEG mirror",
                        "volumes": len(index), "slices": n_slices,
@@ -569,8 +579,6 @@ def main() -> None:
         lo, hi = max(0, int(zs.min()) - 6), min(len(msks_v), int(zs.max()) + 7)
         entry = {"truth": "liver_tumour", "kind": "liver-volume", "true_lesions": pick_r["lesions_true"]}
         if NIFTI:
-            from .common import letterbox as _lb
-
             hu, _, (sx, sy, sz) = read_nifti_case(*index[v])
             sl = []
             for z in range(lo, hi):

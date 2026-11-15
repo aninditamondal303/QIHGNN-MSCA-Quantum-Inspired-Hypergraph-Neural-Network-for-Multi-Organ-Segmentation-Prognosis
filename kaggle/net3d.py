@@ -7,7 +7,6 @@
    uses, scoring it against the expert labels, so the site can show how well it did on that very patient.
 """
 import glob
-import json
 import os
 import shutil
 import subprocess

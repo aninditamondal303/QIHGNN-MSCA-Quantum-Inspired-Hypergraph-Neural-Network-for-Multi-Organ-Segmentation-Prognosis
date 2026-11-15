@@ -54,7 +54,18 @@ def test_corpus_marks_unsupervised_channels():
 
 def test_cases_listing():
     c = client.get("/api/cases").json()
-    assert {x["id"] for x in c["cases"]} >= {"PH-BRAIN-01", "PH-ABDOMEN-01", "PH-PELVIS-01"}
+    assert c["cases"], "the website publishes at least one case"
+    for x in c["cases"]:
+        assert x["id"] and x["channels"] and x["label"]
+
+
+def test_published_case_loads_with_training_values():
+    from api.app import case_volume
+
+    first = client.get("/api/cases").json()["cases"][0]
+    case = case_volume(first["id"])
+    assert case.image.shape == (len(first["channels"]), *first["shape"])
+    assert case.label.shape == tuple(first["shape"])
 
 
 def test_metrics_says_not_yet_measured_without_results():
