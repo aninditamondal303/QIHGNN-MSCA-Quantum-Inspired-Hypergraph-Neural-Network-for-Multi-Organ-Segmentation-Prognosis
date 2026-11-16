@@ -118,7 +118,9 @@ def corpus_summary(root: Path) -> Dict:
         "inspected": inspection is not None,
         "inspectedAt": (inspection or {}).get("generated_at"),
         "labels": list(LABELS),
-        "corpora": [asdict(c) | {"cases": ((inspection or {}).get("datasets", {}).get(c.key, {}) or {}).get("cases")} for c in corpora],
+        # the website shows only the dataset's own name, never the uploader's account name
+        "corpora": [asdict(c) | {"kaggle": c.kaggle.split("/")[-1] if c.kaggle else None,
+                                 "cases": ((inspection or {}).get("datasets", {}).get(c.key, {}) or {}).get("cases")} for c in corpora],
         "supervisedChannels": sup,
         "unsupervisedChannels": [l for l in LABELS if l not in sup],
         "reportCorpus": {

@@ -476,8 +476,8 @@ function CervixReport({ res, metrics }: { res: CervixResult; metrics: OrganMetri
           </table>
           {cm && (
             <p className="mt-3 text-small text-muted">
-              On {cm.test.n} held-out cells the grading model picked the right type {(cm.test.accuracy * 100).toFixed(0)}% of the time
-              and flagged {(cm.test.abnormal.sensitivity * 100).toFixed(0)}% of abnormal cells, with {((1 - cm.test.abnormal.specificity) * 100).toFixed(0)}% of other cells flagged by mistake.
+              On {cm.test.n} held-out cells the grading model picked the right type {(cm.test.accuracy * 100).toFixed(1)}% of the time
+              and flagged {(cm.test.abnormal.sensitivity * 100).toFixed(1)}% of abnormal cells, with {((1 - cm.test.abnormal.specificity) * 100).toFixed(1)}% of other cells flagged by mistake.
               Those cells came from one dataset; slides from another laboratory, stain or magnification can score differently.
             </p>
           )}

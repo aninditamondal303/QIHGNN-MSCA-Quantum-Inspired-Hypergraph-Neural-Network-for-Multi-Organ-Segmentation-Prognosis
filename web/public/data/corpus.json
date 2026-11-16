@@ -13,7 +13,7 @@
   {
    "key": "brats2020",
    "name": "BraTS 2020",
-   "kaggle": "awsaf49/brats2020-training-data",
+   "kaggle": "brats2020-training-data",
    "modality": "MRI (T1, T1ce, T2, FLAIR)",
    "claimed_channels": [
     "brain"
@@ -29,7 +29,7 @@
   {
    "key": "lits",
    "name": "LiTS",
-   "kaggle": "harshwardhanbhangale/lits-dataset",
+   "kaggle": "lits-dataset",
    "modality": "CT (portal venous)",
    "claimed_channels": [
     "liver"
@@ -45,7 +45,7 @@
   {
    "key": "cervical",
    "name": "Cervical cancer segmentation",
-   "kaggle": "balajikartheek/cervical-cancer-segmentation",
+   "kaggle": "cervical-cancer-segmentation",
    "modality": "Modality and format are determined by inspection",
    "claimed_channels": [
     "cervix"

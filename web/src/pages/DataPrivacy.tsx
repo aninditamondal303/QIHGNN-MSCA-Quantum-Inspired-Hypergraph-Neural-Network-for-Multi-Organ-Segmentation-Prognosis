@@ -5,16 +5,16 @@ import { useTitle } from '../lib/router';
 import { useScreen } from '../lib/screenMetrics';
 import type { CorpusFile } from '../lib/types';
 
-const DATASETS = [
-  { name: 'Brain Tumor MRI Dataset', role: 'Tumour check: training, validation and test', what: 'About 7,000 MRI slices in four groups: no tumour, glioma, meningioma, pituitary.', href: 'https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset' },
-  { name: 'Brain MRI Images for Brain Tumor Detection', role: 'Independent test only', what: 'About 250 MRI images labelled tumour / no tumour, from a different collection.', href: 'https://www.kaggle.com/datasets/navoneel/brain-mri-images-for-brain-tumor-detection' },
-  { name: 'BraTS 2020', role: 'Outline, volume, prognosis; glioma slices for the tumour check', what: '369 pre-operative glioma MRI scans in four sequences with expert tumour segmentations; survival data for 236 patients.', href: 'https://www.kaggle.com/datasets/awsaf49/brats2020-training-data' },
-  { name: 'Brain tumour segmentation (2D)', role: 'Outline on skull-on images', what: 'About 3,000 contrast-enhanced T1 slices with tumour masks.', href: 'https://www.kaggle.com/datasets/nikhilroxtomar/brain-tumor-segmentation' },
-  { name: 'LiTS (2D slices)', role: 'Liver and liver-tumour outline; “not a brain MRI” examples; liver channel of the research model', what: '131 abdominal CT scans as slices, with liver and tumour labelled separately.', href: 'https://www.kaggle.com/datasets/harshwardhanbhangale/lits-dataset' },
+const DATASETS: { name: string; role: string; what: string; href?: string }[] = [
+  { name: 'Brain Tumor MRI Dataset', role: 'Tumour check: training, validation and test', what: 'About 7,000 MRI slices in four groups: no tumour, glioma, meningioma, pituitary.' },
+  { name: 'Brain MRI Images for Brain Tumor Detection', role: 'Independent test only', what: 'About 250 MRI images labelled tumour / no tumour, from a different collection.' },
+  { name: 'BraTS 2020', role: 'Outline, volume, prognosis; glioma slices for the tumour check', what: '369 pre-operative glioma MRI scans in four sequences with expert tumour segmentations; survival data for 236 patients.', href: 'https://www.med.upenn.edu/cbica/brats2020/' },
+  { name: 'Brain tumour segmentation (2D)', role: 'Outline on skull-on images', what: 'About 3,000 contrast-enhanced T1 slices with tumour masks.' },
+  { name: 'LiTS (2D slices)', role: 'Liver and liver-tumour outline; “not a brain MRI” examples; liver channel of the research model', what: '131 abdominal CT scans as slices, with liver and tumour labelled separately.', href: 'https://competitions.codalab.org/competitions/17094' },
   { name: 'LiTS (original CT volumes)', role: 'Liver and liver-tumour outline, whole-scan verdict', what: '131 CT scans in Hounsfield units with liver and tumour labelled; the model the website runs is trained on these.', href: 'https://competitions.codalab.org/competitions/17094' },
   { name: 'CHAOS', role: 'Tumour-free livers: training and the whole-scan specificity test', what: '40 abdominal CT scans of healthy livers from a second hospital; 20 with the liver outlined.', href: 'https://chaos.grand-challenge.org/' },
   { name: 'SIPaKMeD', role: 'Cell grading', what: 'About 4,000 single cervical cells cut from stained slides, each graded by cytologists into one of five types.', href: 'https://doi.org/10.1109/ICIP.2018.8451588' },
-  { name: 'Cervical cytology', role: 'Cell and nucleus outline, N:C ratio; “not a brain MRI” examples', what: '686 stained microscope images with about 34,000 cells and their nuclei outlined. No diagnosis labels.', href: 'https://www.kaggle.com/datasets/balajikartheek/cervical-cancer-segmentation' },
+  { name: 'Cervical cytology', role: 'Cell and nucleus outline, N:C ratio; “not a brain MRI” examples', what: '686 stained microscope images with about 34,000 cells and their nuclei outlined. No diagnosis labels.' },
 ];
 
 export function DataPrivacy({ corpus }: { corpus: CorpusFile | null }) {
@@ -49,7 +49,7 @@ export function DataPrivacy({ corpus }: { corpus: CorpusFile | null }) {
               <tbody>
                 {DATASETS.map((d) => (
                   <tr key={d.name} className="border-b border-rule align-top">
-                    <td className="py-3 pr-4"><a href={d.href} target="_blank" rel="noreferrer" className="link-underline inline-flex items-center gap-1 font-medium">{d.name}<LuArrowUpRight className="size-3.5" aria-hidden="true" /></a></td>
+                    <td className="py-3 pr-4">{d.href ? <a href={d.href} target="_blank" rel="noreferrer" className="link-underline inline-flex items-center gap-1 font-medium">{d.name}<LuArrowUpRight className="size-3.5" aria-hidden="true" /></a> : <span className="font-medium">{d.name}</span>}</td>
                     <td className="py-3 pr-4">{d.role}</td>
                     <td className="py-3 text-muted">{d.what}</td>
                   </tr>
