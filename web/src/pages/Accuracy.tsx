@@ -238,7 +238,7 @@ export function Accuracy({ metrics3d, history, verification, loading3d }: { metr
             )}
             <p className="mt-3 text-small text-muted">
               {lv.patient_detection
-                ? `${lv.patients_with_tumour} of the ${lv.test_patients} LiTS test patients have tumours; the healthy CHAOS livers are what make a specificity measurable at all, and with this few tumour-free scans its confidence interval is wide.`
+                ? `${lv.patients_with_tumour} of the ${lv.test_patients} outlined test patients have tumours. The healthy CHAOS livers are what make a specificity measurable at all (95% CI ${lv.patient_detection.specificity_ci ? `${pct(lv.patient_detection.specificity_ci[0], 0)}–${pct(lv.patient_detection.specificity_ci[1], 0)}` : 'wide'}); with this few tumour-free scans it is still a rough figure.`
                 : `${lv.patients_with_tumour} of the ${lv.test_patients} test patients have tumours (as do most LiTS patients), too few tumour-free patients for a per-patient specificity; the slice-level figures above are the honest substitute.`} Very large tumours can be badly under-measured, which is why the tumour-volume correlation is modest.
               {lv.label_cleaning ? ` ${lv.label_cleaning}` : ''} Small lesions are the hard part: {pct(lv.lesions.recall_small, 0)} of the {lv.lesions.n_small} small ones were found. {lv.note} Thresholds were chosen on validation patients, never on the test set.
             </p>

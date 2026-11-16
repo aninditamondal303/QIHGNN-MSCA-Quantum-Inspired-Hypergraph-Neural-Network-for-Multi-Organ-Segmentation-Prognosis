@@ -185,7 +185,7 @@ try {
     const idx = await page.evaluate(async () => (await fetch('screen/samples/organs_index.json')).json());
     const vol = idx.find((s) => s.kind === 'liver-volume');
     await page.locator('section', { hasText: 'held-out test image' }).getByRole('button', { name: /3D CT/ }).click();
-    await page.getByText(/possible lesions? outlined|No liver lesion outlined/).first().waitFor({ timeout: 240000 });
+    await page.getByText(/possible lesions? outlined|No liver lesion outlined|Liver tumour likely|below the alert size/).first().waitFor({ timeout: 240000 });
     const txt = await page.locator('.print-report').innerText();
     const liverCc = Number(txt.match(/Liver volume\s+([\d.]+)/i)[1]);
     assert.ok(Math.abs(liverCc - vol.true_liver_cc) / vol.true_liver_cc < 0.1, `liver ${liverCc} vs expert ${vol.true_liver_cc}`);

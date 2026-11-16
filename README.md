@@ -204,20 +204,21 @@ A second model (EfficientNet-B0, temperature-scaled) sorts every cell the outlin
 
 The flag threshold (0.95) was set on validation cells to catch at least 90% of abnormal ones. SIPaKMeD cells are cut by hand from one collection; cells cut automatically from another laboratory's slides can score differently, and the grades are cell types, not a Bethesda diagnosis.
 
-### Liver CT (LiTS, 131 original CT scans; 25 held-out patients, every slice)
+### Liver CT (LiTS, 131 original CT scans + CHAOS, 40 healthy-liver CT scans; 27 held-out patients, every slice)
 
-Two networks in sequence: one finds the liver on each slice; the second looks only at a square around the liver, cropped from the scan at full resolution, and outlines tumours. Trained on the original CT volumes (Hounsfield units, real voxel sizes, lossless expert masks), split by patient.
+Two networks in sequence: one finds the liver on each slice; the second looks only at a square around the liver, cropped from the scan at full resolution, and outlines tumours. Trained on the original CT volumes (Hounsfield units, real voxel sizes, lossless expert masks), split by patient. Healthy livers from a second collection (CHAOS) join training, and its 20 unlabelled scans are kept for testing false alarms only.
 
 | Measure | Value |
 |---|---|
-| Liver Dice, whole scan | **0.950** (median 0.952) |
-| Liver volume against the expert | median error 3.4%, r = 0.989 |
-| Tumour Dice, whole scan | 0.422 (median 0.426; 22 patients with tumours) |
-| Lesions found | 81% (75 of 93); 93% of larger lesions, 75% of small ones |
-| False lesions per patient | mean 2.1, median 1 |
-| Liver slices: tumour present or not | sensitivity 63.8%, specificity 95.3%, AUC 0.809 (3,250 slices) |
+| Liver Dice, whole scan | **0.947** (median 0.949) |
+| Liver volume against the expert | median error 2.4%, r = 0.987 |
+| Tumour Dice, whole scan | 0.414 (median 0.474; 22 patients with tumours) |
+| Lesions found | 75% (70 of 93); 86% of larger lesions, 70% of small ones |
+| False lesions per patient | mean 1.6, median 1 |
+| Liver slices: tumour present or not | sensitivity 66.5%, specificity 95.7%, AUC 0.822 (3,447 slices) |
+| Whole scan: "tumour likely" (largest lesion of at least 111 voxels, set on validation) | sensitivity 77% (17/22), specificity 80% (20/25 tumour-free scans, 95% CI 61–91%), AUC 0.875 |
 
-Weak spot: very large tumours can be badly under-measured (two test patients: 346 vs 69 cm³ and 266 vs 2 cm³), so tumour volume correlates with the expert at only r = 0.51. An earlier attempt on a JPEG copy of the same data reached tumour Dice 0.26; its masks were full of compression specks, which is why the original scans are used.
+Before the healthy livers were added the same cascade found more lesions (81%) but with more false ones (2.1 per patient), and nothing could measure how often it clears a healthy scan. Weak spot: very large tumours can be badly under-measured, so tumour volume correlates with the expert at only r = 0.67. An earlier attempt on a JPEG copy of LiTS reached tumour Dice 0.26; its masks were full of compression specks, which is why the original scans are used.
 
 ### Research model (3D QIHGNN-MSCA)
 
