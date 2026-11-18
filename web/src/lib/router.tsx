@@ -8,8 +8,8 @@ export const ROUTES = [
   { path: '/', name: 'Home' },
   { path: '/analyse', name: 'Analyse a scan' },
   { path: '/how-it-works', name: 'How it works' },
-  { path: '/accuracy', name: 'Accuracy' },
-  { path: '/data', name: 'Data & privacy' },
+  { path: '/accuracy', name: 'Performance' },
+  { path: '/data', name: 'Privacy' },
   { path: '/about', name: 'About' },
 ] as const;
 
@@ -71,6 +71,6 @@ export function Link({ to, onClick, ...rest }: AnchorHTMLAttributes<HTMLAnchorEl
 
 export function useTitle(title: string): void {
   useEffect(() => {
-    document.title = title ? `${title} · QIHGNN-MSCA` : 'QIHGNN-MSCA · Brain tumour detection, outlining and prognosis';
+    document.title = title ? `${title} · TriScan AI` : 'TriScan AI · Brain MRI, liver CT and cervical cell analysis in your browser';
   }, [title]);
 }

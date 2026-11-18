@@ -1,23 +1,22 @@
-# QIHGNN-MSCA
+# TriScan AI
 
-**Brain tumour detection, outlining and prognosis that runs privately in the browser, built on a research model for partially supervised multi-organ segmentation.**
+**Medical scan analysis in your browser. Brain MRI, liver CT and cervical cell analysis that runs entirely in your browser. Powered by QIHGNN-MSCA, a 3D hypergraph network for partially supervised multi-organ segmentation and prognosis.**
 
-Upload a brain MRI and get:
+**[Open the live app](https://aninditamondal303.github.io/QIHGNN-MSCA-Quantum-Inspired-Hypergraph-Neural-Network-for-Multi-Organ-Segmentation-Prognosis/)** · installable, works offline after the first visit · nothing is ever uploaded
 
-- **a tumour check**: no tumour, glioma, meningioma, pituitary tumour, or "not a brain MRI", with calibrated confidence and abstention when unsure;
-- **an outline**: the tumour drawn on the scan, and its volume in cm³ for a 3D NIfTI scan;
-- **an explanation**: a class-activation heat map of the evidence;
-- **a prognosis**: a survival curve for glioma from age, tumour volume and extent of surgery, with a bootstrap uncertainty band.
+![TriScan AI home page](docs/images/hero-light.png)
 
-The models run in the visitor's browser through ONNX Runtime Web, so scans are never uploaded. Every figure on the site is measured on held-out patients, on duplicate-free splits, and on an independent dataset.
+| Tool | What you get | Measured on held-out patients |
+|---|---|---|
+| **Brain MRI** | Tumour check (glioma, meningioma, pituitary, none) with calibrated confidence, outline and 3D volume, heat map, glioma survival curve | sensitivity 98.4%, specificity 98.8%, AUC 0.994 |
+| **Liver CT** | Liver and tumour outlines on a slice or a whole 3D CT, volumes, lesion count, whole-scan "tumour likely" verdict | liver Dice 0.947, volume error 2.4% |
+| **Cervical cells** | Every cell and nucleus outlined, N:C ratio per cell, five-type cell grading with abnormal cells flagged | cell grading 95.5% accuracy |
 
-**Live site:** https://aninditamondal303.github.io/QIHGNN-MSCA-Quantum-Inspired-Hypergraph-Neural-Network-for-Multi-Organ-Segmentation-Prognosis/
-
-![Home page](docs/images/hero-light.png)
+**Why it feels like a product, not a notebook:** seven models run in a background thread of the browser (ONNX Runtime Web + Web Workers), so the page never freezes and scans never leave the device; it installs as an app and works offline; every result has a before/after comparison slider and a printable report; 15 unit tests, 27 end-to-end browser tests and CI/CD on GitHub Actions guard every release.
 
 > Research and education only. Not a medical device and not for diagnosis or treatment.
 
-A project by Anindita Mondal.
+Designed and built by Anindita Mondal.
 
 ---
 

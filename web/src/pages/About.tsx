@@ -22,8 +22,8 @@ export function About() {
   return (
     <>
       <PageHead eyebrow="About" title="Built by Anindita Mondal.">
-        QIHGNN-MSCA is an independent project in medical imaging AI: from a 3D research network for partially labelled multi-organ data to a
-        private, browser-based tool for brain, liver and cervical cancer imaging, with its accuracy measured in the open.
+        TriScan AI is a private, browser-based app for brain, liver and cervical cancer imaging, with its accuracy measured in the open. It is
+        powered by QIHGNN-MSCA, a 3D research network for partially labelled multi-organ data, designed, trained and shipped end to end.
       </PageHead>
       <Container className="pb-24">
         <section aria-labelledby="diff-t" className="border-t border-rule-strong py-12">

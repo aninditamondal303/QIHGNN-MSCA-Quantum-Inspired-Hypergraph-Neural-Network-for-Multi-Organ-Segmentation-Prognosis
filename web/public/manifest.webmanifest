@@ -1,0 +1,22 @@
+{
+  "name": "TriScan AI: medical scan analysis",
+  "short_name": "TriScan AI",
+  "description": "Brain MRI, liver CT and cervical cell analysis that runs entirely in your browser. Nothing is uploaded.",
+  "id": "./",
+  "start_url": "./analyse",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B0B0A",
+  "theme_color": "#0B0B0A",
+  "categories": ["medical", "health", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Brain MRI", "url": "./analyse?type=brain" },
+    { "name": "Liver CT", "url": "./analyse?type=liver" },
+    { "name": "Cervical cells", "url": "./analyse?type=cervix" }
+  ]
+}

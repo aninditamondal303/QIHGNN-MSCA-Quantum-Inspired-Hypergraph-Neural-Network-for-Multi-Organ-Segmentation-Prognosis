@@ -100,7 +100,7 @@ function KM({ km }: { km: NonNullable<ScreenMetrics['survival']>['risk_groups'][
 }
 
 export function Accuracy({ metrics3d, history, verification, loading3d }: { metrics3d: MetricsFile | null; history: TrainingHistory | null; verification: Verification | null; loading3d: boolean }) {
-  useTitle('Accuracy');
+  useTitle('Performance');
   const { metrics, ready } = useScreen();
   const organs = useOrgans();
   const lv = organs.liverReady ? organs.metrics?.liver : undefined;

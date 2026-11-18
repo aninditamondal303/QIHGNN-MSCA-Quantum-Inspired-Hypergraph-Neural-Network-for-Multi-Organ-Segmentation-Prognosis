@@ -18,7 +18,7 @@ const DATASETS: { name: string; role: string; what: string; href?: string }[] = 
 ];
 
 export function DataPrivacy({ corpus }: { corpus: CorpusFile | null }) {
-  useTitle('Data & privacy');
+  useTitle('Privacy');
   const { metrics } = useScreen();
   const a = metrics?.dedup_audit;
   const cd = metrics?.classifier_data;

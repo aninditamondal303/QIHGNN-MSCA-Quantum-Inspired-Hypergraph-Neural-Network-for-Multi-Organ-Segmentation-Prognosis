@@ -68,7 +68,7 @@ export function Hero({ cases, children }: { cases: CaseInfo[]; verification?: Ve
                   </button>
                 </div>
               </div>
-              <ScanHud readout={[['CASE', info?.id ?? '—'], ['SEQ', info?.channels[channel]?.name ?? '—'], ['SLICE', `${z ?? 0}`], ['MODE', 'PHANTOM']]}>
+              <ScanHud readout={[['CASE', info?.id ?? '—'], ['SEQ', info?.channels[channel]?.name ?? '—'], ['SLICE', `${z ?? 0}`], ['MODE', info?.synthetic ? 'PHANTOM' : 'HELD-OUT']]}>
               <div className="relative">
                 <FilmCanvas
                   image={image}

@@ -1,4 +1,4 @@
-import { LuArrowRight, LuBrain, LuChartLine, LuScanSearch, LuShieldCheck } from 'react-icons/lu';
+import { LuArrowRight, LuBrain, LuChartLine, LuCpu, LuFileText, LuScanSearch, LuShieldCheck, LuUpload } from 'react-icons/lu';
 import { Container } from '../components/chrome';
 import { CountUp, Reveal, Ticker } from '../components/fx';
 import { Hero } from '../components/Hero';
@@ -30,7 +30,7 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
   return (
     <>
       <Hero cases={cases}>
-        <p className="meta mb-6 text-muted">Brain · liver · cervix — detection, outlining, measurement</p>
+        <p className="meta mb-6 text-muted">TriScan AI · brain MRI, liver CT and cervical cell analysis</p>
         {/* Sized in container units so the longest line fills the column at any width. */}
         <h1 id="hero-title" className="display leading-[0.86]" style={{ fontSize: 'calc(100cqi / 9.3)' }}>
           <span className="block">See it.</span>
@@ -38,15 +38,15 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
           <span className="block">Explain it.</span>
         </h1>
         <p className="mt-8 max-w-[54ch] text-lead font-light">
-          Upload a brain MRI, a liver CT or a microscope image of cervical cells. QIHGNN-MSCA finds and outlines what matters, measures it, and for brain
-          tumours estimates survival, privately, inside your browser. Every number on this site is measured on scans the models never saw.
+          Drop in a brain MRI, a liver CT or a microscope image of cervical cells. TriScan AI finds and outlines what matters, measures it and writes
+          a report in seconds, entirely inside your browser. Nothing is uploaded, and every accuracy figure is measured on patients the models never saw.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link to="/analyse" className="inline-flex h-12 items-center gap-2 bg-fg px-5 font-medium text-surface no-underline hover:bg-cobalt">
-            Analyse a scan <LuArrowRight className="size-4" aria-hidden="true" />
+            Open the app <LuArrowRight className="size-4" aria-hidden="true" />
           </Link>
           <Link to="/accuracy" className="inline-flex h-12 items-center gap-2 border border-rule-strong px-5 no-underline hover:bg-raised">
-            See the accuracy
+            See performance
           </Link>
         </div>
         <div className="mt-auto grid grid-cols-2 gap-x-6 gap-y-7 pt-12">
@@ -71,7 +71,7 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
       <section className="border-t border-rule-strong py-16 md:py-24" aria-labelledby="what-title">
         <Container>
           <div className="grid grid-cols-12 gap-x-6 gap-y-10">
-            <h2 id="what-title" className="display col-span-12 text-h2 md:col-span-4"><Reveal>Three cancers. One private tool.</Reveal></h2>
+            <h2 id="what-title" className="display col-span-12 text-h2 md:col-span-4"><Reveal>Three cancers. One private app.</Reveal></h2>
             <div className="col-span-12 grid gap-px bg-rule md:col-span-8 md:grid-cols-3">
               {[
                 { icon: LuBrain, to: '/analyse?type=brain', t: 'Brain MRI', d: 'Tumour or not, and which type: glioma, meningioma or pituitary. Outline, volume on 3D scans, a decision heat map and a survival estimate for glioma.', s: ready && t ? `${pct(t.tumour_vs_no_tumour.sensitivity)} of tumours found` : 'Accuracy published after training' },
@@ -89,6 +89,32 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
                 </Reveal>
               ))}
             </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="border-t border-rule-strong py-16 md:py-24" aria-labelledby="steps-title">
+        <Container>
+          <div className="grid grid-cols-12 gap-x-6 gap-y-10">
+            <h2 id="steps-title" className="display col-span-12 text-h2 md:col-span-4"><Reveal>From scan to report in three steps.</Reveal></h2>
+            <ol className="col-span-12 grid gap-px bg-rule md:col-span-8 md:grid-cols-3">
+              {[
+                { icon: LuUpload, t: 'Drop in a scan', d: 'JPEG or PNG slices, or a whole 3D NIfTI volume. Try a held-out sample if you have none to hand.' },
+                { icon: LuCpu, t: 'AI runs on your device', d: 'Seven models load once and run in a background thread of your browser. No account, no upload, no server.' },
+                { icon: LuFileText, t: 'Review and export', d: 'Drag the slider to compare with the original, read the measurements and print or save the report as a PDF.' },
+              ].map(({ icon: Icon, t: title, d }, i) => (
+                <Reveal key={title} delay={i * 120} className="flex bg-surface">
+                  <li className="flex flex-col p-6">
+                    <span className="flex items-center gap-3">
+                      <span className="font-mono text-small text-muted">0{i + 1}</span>
+                      <Icon className="size-5 text-cobalt" aria-hidden="true" />
+                    </span>
+                    <h3 className="display mt-6 text-h3">{title}</h3>
+                    <p className="mt-3 text-small text-muted">{d}</p>
+                  </li>
+                </Reveal>
+              ))}
+            </ol>
           </div>
         </Container>
       </section>
@@ -116,7 +142,7 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
               </li>
             </ul>
           </div>
-          <Link to="/accuracy" className="mt-10 inline-flex items-center gap-2 text-film-fg">Read the full evaluation <LuArrowRight className="size-4" aria-hidden="true" /></Link>
+          <Link to="/accuracy" className="mt-10 inline-flex items-center gap-2 text-film-fg">See full performance <LuArrowRight className="size-4" aria-hidden="true" /></Link>
         </Container>
       </section>
 
@@ -141,13 +167,13 @@ export function Home({ cases }: { cases: CaseInfo[] }) {
       <section className="border-t border-rule-strong py-16 md:py-24" aria-labelledby="research-title">
         <Container>
           <div className="grid grid-cols-12 gap-x-6 gap-y-8">
-            <p className="meta col-span-12 text-muted md:col-span-3">Under the hood</p>
+            <p className="meta col-span-12 text-muted md:col-span-3">Powered by QIHGNN-MSCA</p>
             <div className="col-span-12 md:col-span-9">
               <h2 id="research-title" className="display max-w-[18ch] text-h2"><Reveal>A research model that learns from incomplete labels.</Reveal></h2>
               <p className="mt-6 max-w-[62ch] text-lead font-light">
-                Public datasets each label one organ. QIHGNN-MSCA is an 8.3-million-parameter 3D network that trains on all of them together
-                without being taught that every unlabelled organ is empty tissue, and predicts survival from the same encoding. The viewer at
-                the top of this page shows it on a synthetic phantom.
+                Public datasets each label one organ. QIHGNN-MSCA, the network behind TriScan AI, is an 8.3-million-parameter 3D model that trains
+                on all of them together without being taught that every unlabelled organ is empty tissue, and predicts survival from the same
+                encoding. The viewer at the top of this page shows real held-out patients, and How it works runs the network on them live in your browser.
               </p>
               <Link to="/how-it-works" className="mt-6 inline-flex items-center gap-2">How it works <LuArrowRight className="size-4" aria-hidden="true" /></Link>
             </div>

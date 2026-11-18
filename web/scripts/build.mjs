@@ -93,6 +93,31 @@ export async function writeHtml(cssHash = 'dev', jsHash = 'dev', dev = false) {
   await writeFile(join(DIST, '404.html'), html);
 }
 
+/** Offline support: the app shell, models and runtime are cached on first use, in a cache named after this build,
+ *  so a new deploy replaces old models instead of mixing them. Pages are network-first, everything else cache-first. */
+export async function writeServiceWorker(version) {
+  const sw = `const CACHE = 'triscan-${version}';
+self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './analyse/', './manifest.webmanifest', './icons/icon-192.png']))); });
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('triscan-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin || req.url.includes('/api/') || req.url.includes('/esbuild')) return;
+  if (req.mode === 'navigate') {
+    e.respondWith(fetch(req).then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
+      .catch(() => caches.match(req).then((r) => r || caches.match('./'))));
+    return;
+  }
+  e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+    if (res.ok && res.status === 200) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+    return res;
+  })));
+});
+`;
+  await writeFile(join(DIST, 'sw.js'), sw);
+}
+
 /** Self-host ONNX Runtime Web's WebAssembly backend (glue + binary); the loader is bundled by esbuild. */
 export async function copyOrt() {
   // The package's exports map hides its dist/ folder from require.resolve, so locate the package directly.
@@ -112,6 +137,7 @@ async function main() {
   await writeFile(join(DIST, 'assets', 'styles.css'), css);
   const js = await readFile(join(DIST, 'assets', 'app.js'), 'utf8');
   await writeHtml(hash(css), hash(js));
+  await writeServiceWorker(hash(css + js));
   const bytes = Object.entries(result.metafile.outputs).filter(([k]) => k.endsWith('.js'))[0][1].bytes;
   console.log(`built dist/ — app.js ${(bytes / 1024).toFixed(0)} kB, styles.css ${(css.length / 1024).toFixed(0)} kB`);
 }

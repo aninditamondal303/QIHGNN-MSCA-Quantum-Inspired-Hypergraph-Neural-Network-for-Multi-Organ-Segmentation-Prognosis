@@ -90,12 +90,13 @@ try {
 
   await step('home renders headline, calls to action and ticker', async () => {
     assert.match(await page.locator('h1').innerText(), /SEE IT\.\s+MEASURE IT\.\s+EXPLAIN IT\./i);
-    assert.ok(await page.getByRole('link', { name: /Analyse a scan/ }).first().isVisible());
+    assert.ok(await page.getByRole('link', { name: /Open (the )?app/ }).first().isVisible());
+    assert.match(await page.title(), /^TriScan AI/);
     assert.ok(await page.locator('.ticker').isVisible());
   });
 
-  await step('header reports static preview when the API is down', async () => {
-    await page.getByText('Static preview').first().waitFor({ timeout: 5000 });
+  await step('header reports on-device AI when the API is down', async () => {
+    await page.getByText('On-device AI ready').first().waitFor({ timeout: 5000 });
   });
 
   await step('theme toggle switches and persists', async () => {
@@ -115,7 +116,7 @@ try {
 
   await step('header links navigate between pages without reloading', async () => {
     await page.evaluate(() => { window.__sameDoc = true; });
-    for (const [name, path, heading] of [['How it works', '/how-it-works', /pixels to a prognosis/i], ['Accuracy', '/accuracy', /measured, not claimed/i], ['Data & privacy', '/data', /nothing of yours out/i], ['About', '/about', /Anindita Mondal/i]]) {
+    for (const [name, path, heading] of [['How it works', '/how-it-works', /pixels to a prognosis/i], ['Performance', '/accuracy', /measured, not claimed/i], ['Privacy', '/data', /nothing of yours out/i], ['About', '/about', /Anindita Mondal/i]]) {
       await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name }).click();
       await page.waitForURL(`**${path}`);
       assert.match(await page.locator('h1').innerText(), heading);
@@ -202,6 +203,19 @@ try {
     assert.ok(dice > 0.5, `network Dice ${dice}`);
   });
 
+  await step('installable app: manifest, icons and offline worker are published', async () => {
+    const r = await page.evaluate(async () => {
+      const m = await (await fetch('manifest.webmanifest')).json();
+      const icons = await Promise.all(m.icons.map(async (i) => (await fetch(i.src)).ok));
+      const sw = await fetch('sw.js');
+      return { name: m.short_name, display: m.display, icons, sw: sw.ok && (await sw.text()).includes("'triscan-") };
+    });
+    assert.equal(r.name, 'TriScan AI');
+    assert.equal(r.display, 'standalone');
+    assert.ok(r.icons.every(Boolean), 'an icon is missing');
+    assert.ok(r.sw, 'service worker missing');
+  });
+
   await step('no uncaught page errors', async () => {
     assert.deepEqual(errors, []);
   });
@@ -221,7 +235,7 @@ try {
 
   await step('mobile menu opens and navigates', async () => {
     await mobile.getByRole('button', { name: 'Open menu' }).click();
-    await mobile.locator('#mobile-nav').getByRole('link', { name: 'Accuracy' }).click();
+    await mobile.locator('#mobile-nav').getByRole('link', { name: 'Performance' }).click();
     await mobile.waitForURL('**/accuracy');
     assert.equal(await mobile.locator('#mobile-nav').count(), 0);
   });
@@ -234,3 +248,4 @@ for (const [status, name, msg] of results) console.log(`${status === 'ok' ? '  o
 const failed = results.filter((r) => r[0] !== 'ok').length;
 console.log(`${results.length - failed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
+

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { LuArrowRight, LuMenu, LuMoon, LuScanLine, LuSun, LuX } from 'react-icons/lu';
+import { LuArrowRight, LuDownload, LuMenu, LuMoon, LuScanLine, LuSun, LuX } from 'react-icons/lu';
+import { useInstall } from '../lib/pwa';
 import { Link, openIntro, ROUTES } from '../lib/router';
 import type { ApiState } from '../lib/data';
 
@@ -49,9 +50,11 @@ export function StatusDot({ api }: { api: ApiState }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-2" title="The Python API is not running. Everything except running the network works.">
-      <span className="inline-flex size-2 border border-muted" />
-      <span className="meta text-muted">Static preview</span>
+    <span className="inline-flex items-center gap-2" title="All models run in your browser. No server needed, nothing uploaded.">
+      <span className="relative flex size-2">
+        <span className="relative inline-flex size-2 rounded-full bg-[#1f9d55]" />
+      </span>
+      <span className="meta text-muted">On-device AI ready</span>
     </span>
   );
 }
@@ -60,6 +63,7 @@ const NAV = ROUTES.filter((r) => r.path !== '/' && r.path !== '/analyse');
 
 export function Header({ api, path }: { api: ApiState; path: string }) {
   const [theme, toggle] = useTheme();
+  const install = useInstall();
   const [menu, setMenu] = useState(false);
   useEffect(() => setMenu(false), [path]);
   return (
@@ -68,7 +72,7 @@ export function Header({ api, path }: { api: ApiState; path: string }) {
         <Link
           to="/"
           className="flex items-center gap-2.5 no-underline"
-          aria-label="QIHGNN-MSCA: back to the interactive intro"
+          aria-label="TriScan AI: back to the interactive intro"
           title="Back to the interactive intro"
           onClick={(e) => {
             if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -77,7 +81,7 @@ export function Header({ api, path }: { api: ApiState; path: string }) {
           }}
         >
           <Mark className="size-7" />
-          <span className="display text-[1.1rem] tracking-[-0.02em]">QIHGNN-MSCA</span>
+          <span className="display text-[1.15rem] tracking-[-0.02em]">TriScan AI</span>
         </Link>
         <span className="hidden lg:inline-flex">
           <StatusDot api={api} />
@@ -108,6 +112,18 @@ export function Header({ api, path }: { api: ApiState; path: string }) {
             <LuScanLine className="size-[18px]" aria-hidden="true" />
             <span className="hidden xl:inline">Intro</span>
           </button>
+          {install && (
+            <button
+              type="button"
+              onClick={install}
+              className="inline-flex h-10 items-center gap-2 px-2.5 text-small text-fg hover:bg-raised"
+              aria-label="Install TriScan AI as an app"
+              title="Install TriScan AI as an app (works offline)"
+            >
+              <LuDownload className="size-[18px]" aria-hidden="true" />
+              <span className="hidden xl:inline">Install app</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={toggle}
@@ -121,7 +137,7 @@ export function Header({ api, path }: { api: ApiState; path: string }) {
             aria-current={path === '/analyse' ? 'page' : undefined}
             className="hidden h-10 items-center gap-2 bg-fg px-4 text-small font-medium text-surface no-underline hover:bg-cobalt sm:inline-flex"
           >
-            Analyse a scan <LuArrowRight className="size-4" aria-hidden="true" />
+            Open app <LuArrowRight className="size-4" aria-hidden="true" />
           </Link>
           <button
             type="button"

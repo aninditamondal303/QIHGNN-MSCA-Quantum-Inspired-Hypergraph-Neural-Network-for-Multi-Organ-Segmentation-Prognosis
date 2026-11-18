@@ -382,14 +382,14 @@ export function Intro({ onEnter }: { onEnter: () => void }) {
       />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-5 py-5 sm:px-10">
-        <span className="font-display text-[0.95rem] font-bold tracking-tight">QIHGNN-MSCA</span>
+        <span className="font-display text-[0.95rem] font-bold tracking-tight">TriScan AI</span>
         <button type="button" onClick={finish} className="pointer-events-auto font-mono text-[0.72rem] uppercase tracking-[0.18em] text-[#f2f1ec]/70 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
           Skip intro →
         </button>
       </div>
 
       <div className="pointer-events-none absolute left-5 top-[18%] max-w-[90vw] sm:left-10 sm:top-1/2 sm:-translate-y-1/2">
-        <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-[#f2f1ec]/55">Quantum-inspired hypergraph network · by Anindita Mondal</p>
+        <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-[#f2f1ec]/55">TriScan AI · medical scan analysis · by Anindita Mondal</p>
         <h1 className="mt-4 font-display font-extrabold uppercase leading-[0.86] tracking-tight" style={{ fontSize: 'clamp(2.9rem, 7.2vw, 7.4rem)' }}>
           Look<br />inside
           <span key={organ} className="intro-word block text-[#5474ff]">{ORGANS[organ].line}</span>
